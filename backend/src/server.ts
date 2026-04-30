@@ -1,12 +1,19 @@
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { supabase } from './config/supabase'
+import authRouter from './routes/auth'
+
+// Resolve DNS issue
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 
 const app = express()
 const PORT = process.env.PORT || 5000;
 
 app.use(cors())
 app.use(express.json());
+app.use('/auth', authRouter);
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({
@@ -20,6 +27,15 @@ app.get('/test-supabase', async (req: Request, res: Response) => {
   if(error) return res.status(500).json(error);
   return res.json(data);
 })
+
+// Global error handler
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
+  console.error(err);
+  res.status(err.status || 500).json({
+    status: 'error',
+    message: err.message || 'Internal Server Error'
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
