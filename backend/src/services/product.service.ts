@@ -230,4 +230,24 @@ export class ProductService {
 
     return { gs1Url, qrDataUrl, instance };
   }
+
+  /**
+   * Resolve GS1 Digital Link into an instance ID.
+   */
+  static async resolveGS1(gtin: string, identification_type: 'BATCH' | 'UNIQUE', identifier: string) {
+    const column = identification_type === 'BATCH' ? 'batch_number' : 'serial_number';
+    
+    const { data: instance, error } = await supabase
+      .from('product_instances')
+      .select('id, current_status, gtin, products(product_name, category)')
+      .eq('gtin', gtin)
+      .eq(column, identifier)
+      .single();
+
+    if (error || !instance) {
+      throw new Error('Product instance not found from the given GS1 Digital Link details.');
+    }
+
+    return instance;
+  }
 }

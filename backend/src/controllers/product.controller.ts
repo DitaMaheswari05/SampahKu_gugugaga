@@ -93,3 +93,26 @@ export const getInstanceQR = async (req: Request, res: Response) => {
     return res.status(500).json({ status: 'error', message: e.message || 'Failed to generate QR' });
   }
 };
+
+export const resolveQR = async (req: Request, res: Response) => {
+  const { gtin, batch, serial } = req.query;
+
+  if (!gtin) {
+    return res.status(400).json({ status: 'error', message: 'gtin is required' });
+  }
+
+  if (!batch && !serial) {
+    return res.status(400).json({ status: 'error', message: 'Either batch or serial must be provided' });
+  }
+
+  const identification_type = batch ? 'BATCH' : 'UNIQUE';
+  const identifier = (batch || serial) as string;
+
+  try {
+    const instance = await ProductService.resolveGS1(gtin as string, identification_type, identifier);
+    return res.status(200).json({ status: 'success', data: instance });
+  } catch (e: any) {
+    console.error('resolveQR error:', e);
+    return res.status(404).json({ status: 'error', message: e.message || 'Failed to resolve GS1 link' });
+  }
+};

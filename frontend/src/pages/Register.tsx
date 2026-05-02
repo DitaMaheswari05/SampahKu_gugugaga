@@ -14,6 +14,15 @@ const Register: React.FC = () => {
   
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    if (localStorage.getItem('token')) {
+      const role = localStorage.getItem('role');
+      if (role === 'BRAND') navigate('/products');
+      else if (role === 'PETUGAS') navigate('/scan');
+      else navigate('/');
+    }
+  }, [navigate]);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');

@@ -6,16 +6,21 @@ import {
   listProducts,
   getProductDetail,
   getInstanceQR,
+  resolveQR,
 } from '../controllers/product.controller';
 
 const router = Router();
 
-// All routes require authentication
-// NOTE: /instances/* routes MUST come before /:gtin to avoid matching "instances" as a GTIN param
+// Endpoint for resolving GS1 Links. Placed here to avoid param collision. Public endpoint.
+router.get('/resolve', resolveQR);
+
+// Specific endpoints that shouldn't match /:gtin
 router.get('/instances/:instanceId/qr', protect, getInstanceQR);
+
+// Generic endpoints
 router.get('/', protect, listProducts);
-router.get('/:gtin', protect, getProductDetail);
 router.post('/', protect, createProduct);
 router.post('/:gtin/instances', protect, createInstance);
+router.get('/:gtin', protect, getProductDetail);
 
 export default router;

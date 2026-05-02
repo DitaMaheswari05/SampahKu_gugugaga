@@ -19,8 +19,18 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     // fetch profile row and attach for easy authorization checks
     try {
         const { data: profile, error: pErr } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        if (pErr) {
+        if (pErr || !profile) {
             console.error('Failed fetching profile:', pErr);
+            // Fallback to user_metadata
+            req.profile = {
+                id: user.id,
+                email: user.email,
+                name: user.user_metadata?.name || '',
+                role: user.user_metadata?.role || 'KONSUMEN',
+            } as any;
+            
+            // Try to auto-create profile row asynchronously
+            supabase.from('profiles').upsert([req.profile], { onConflict: 'id' }).then();
         } else {
             req.profile = profile as any;
         }

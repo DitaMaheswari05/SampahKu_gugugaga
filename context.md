@@ -66,7 +66,7 @@
 |---|---|
 | Database | **Supabase** (PostgreSQL) |
 | Auth | **Supabase Auth** (`auth.users`) |
-| Storage | Supabase Storage (untuk `evidence_url` di activities) |
+| Storage | Supabase Storage (untuk `evidence_url` di activities). Frontend via API `/upload`. |
 | Blockchain | Hyperledger Fabric (hash dicatat di `activities.blockchain_hash` — integrasi eksternal) |
 
 ### Environment Variables
@@ -108,12 +108,12 @@ SampahKu_gugugaga/
 │       │   ├── instances.ts
 │       │   └── products.ts  ← /products/* endpoints ✅
 │       ├── services/
-│       │   ├── auth.service.ts      ← Register via admin.createUser + profiles upsert ✅
-│       │   ├── instances.service.ts  ← recordScan (status update + activity + points)
+│       │   ├── auth.service.ts      ← Register & Login via Ephemeral Client + profiles upsert ✅
+│       │   ├── instances.service.ts  ← recordScan (hash SHA-256 + activity + points) ✅
 │       │   ├── points.service.ts
 │       │   └── product.service.ts   ← createProduct, createInstance+QR, getProducts+stats ✅
 │       ├── middlewares/
-│       │   └── auth.middleware.ts    ← protect (JWT verify + profile fetch)
+│       │   └── auth.middleware.ts    ← protect (JWT verify + profile fetch w/ user_metadata fallback) ✅
 │       └── types/
 │           └── express.d.ts         ← req.user, req.profile type extensions
 └── frontend/
@@ -272,8 +272,8 @@ coordinates     jsonb  -- { "lat": -6.200, "lng": 106.816 }
 epcis_body      jsonb  -- full EPCIS 2.0 event payload (standar lengkap)
   -- Catatan: Untuk biz_step 'inspecting' (SORTED), simpan jenis material (plastik, kertas, dll) ke dalam epcis_body atau sebagai JSON key terpisah
 timestamp       timestamptz DEFAULT now()
-blockchain_hash text   -- hash transaksi dari Hyperledger Fabric (untuk verifikasi integritas)
-evidence_url    text   -- URL foto bukti (Supabase Storage)
+blockchain_hash text   -- hash transaksi SHA-256 dari payload (simulasi Hyperledger Fabric)
+evidence_url    text   -- URL foto bukti (di-upload via backend ke Supabase Storage)
 ```
 
 **Nilai `biz_step` (EPCIS 2.0 Business Step)** — dipetakan ke status lifecycle:
@@ -530,6 +530,11 @@ Base URL: `http://localhost:5000` (dev)
 | GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ⬜ Planned |
 | POST | `/instances/:id/scan` | Scan & catat aktivitas baru | KONSUMEN / PETUGAS | ✅ |
 
+### Uploads
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| POST | `/upload/evidence` | Upload foto bukti pekerjaan (multipart/form-data) | PETUGAS / KONSUMEN | ✅ |
+
 ### User / Dashboard
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
@@ -540,7 +545,7 @@ Base URL: `http://localhost:5000` (dev)
 ### QR Resolver
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/resolve` | Resolve GS1 Digital Link → instance data | Public | ⬜ Planned |
+| GET | `/products/resolve` | Resolve GS1 Digital Link → instance data | Public | ✅ |
 
 ---
 
@@ -568,7 +573,9 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 
 **Petugas**:
 1. **Dashboard Petugas** — List sampah yang perlu diproses
-2. **Scan & Update** — Scan QR, pilih status baru, upload foto bukti
+2. **Scan & Update** — Scan QR, pilih status baru, upload foto bukti ✅ **IMPLEMENTED** (`/scan`)
+   - Mendukung scan lewat kamera (html5-qrcode) atau upload file gambar
+   - Form dinamis sesuai `biz_step` (termasuk jenis material untuk `inspecting`)
 3. **Riwayat Aktivitas** — History update yang dilakukan
 
 **Brand (Web Dashboard)**:
@@ -617,8 +624,8 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 4. **Poin** harus dicatat di dua tempat: `point_history` (per transaksi) dan `profiles.points` (total akumulasi). Implementasi backend harus berusaha melakukan update secara atomik (gunakan DB function/transaction jika memungkinkan).
 5. **`epcis_body`** adalah JSONB — simpan full EPCIS 2.0 event payload, bukan ringkasan.
 6. **QR code** mewakili `product_instances`, bukan `products`. Satu GTIN bisa punya banyak instances.
-7. **`blockchain_hash`** di `activities` adalah field opsional — dikosongkan jika integrasi Hyperledger belum aktif.
-8. **`evidence_url`** adalah URL file di Supabase Storage — handle upload terpisah dari insert activity.
+7. **`blockchain_hash`** di `activities` diisi otomatis oleh backend dengan *hash* SHA-256 (`crypto`) dari *payload* aktivitas sebagai simulasi integrasi Hyperledger Fabric untuk keperluan hackathon.
+8. **`evidence_url`** adalah URL file di Supabase Storage — di-*upload* langsung dari frontend ke bucket `evidences`.
 9. Frontend menggunakan **React 19** dan **TypeScript 4.9** — perhatikan compatibility.
 10. Backend menggunakan **Express 5** — syntax beberapa hal berbeda dari Express 4 (misal: async error handling otomatis, tidak perlu `next(err)` manual di async routes). **Perhatikan**: `req.params` di Express 5 bertipe `string | string[]`, perlu cast ke `string` saat pass ke function.
 11. **Lifecycle** tidak harus linear — sistem harus memfasilitasi "Jalur A" (via TPS) dan "Jalur B" (langsung Bank Sampah). Petugas hanya bisa update status sesuai dengan otoritas role-nya.
@@ -633,6 +640,10 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 20. **Product stats aggregation** — `GET /products` mengembalikan stats per-produk (total instances, recycled count, disposed count, in_progress count, in_market count) yang di-aggregate dari `product_instances.current_status`.
 21. **Frontend modal pattern** — form pembuatan produk/instance menggunakan popup modal (overlay + animated card), bukan halaman terpisah. Modal di-close pada klik overlay atau tombol X.
 
+22. **Supabase Auth Session Pollution**: Fungsi `signInWithPassword` dan `signUp` di backend **HARUS** menggunakan instansiasi client Ephemeral (sementara) dengan opsi `persistSession: false`. Hal ini krusial untuk mencegah tercemarnya singleton `supabase` (Service Role) oleh session JWT user biasa, yang menyebabkan RLS tiba-tiba aktif dan menggagalkan query backend lainnya (seperti error *RLS violation* saat BRAND membuat produk).
+23. **Uploads Architecture**: Frontend **tidak boleh** berinteraksi langsung dengan Supabase Storage. File dikirim via `FormData` ke backend `/upload/evidence` menggunakan `multer` (memory storage), dan backend yang akan menggunakan Service Role untuk upload ke Supabase Storage, mengembalikan `evidence_url` ke frontend.
+24. **Auth Middleware Fallback**: Jika query ke tabel `profiles` gagal, middleware otentikasi akan menggunakan data `user_metadata` dari token JWT sebagai cadangan (fallback), memastikan sistem RBAC (`req.profile.role`) tetap berfungsi bahkan jika ada *delay* sinkronisasi database.
+
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-02 (implementasi product management + QR generation).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-02 (implementasi fitur Petugas Scan, Upload Evidence, dan Architectural Session Bugfix).*

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../services/auth.service';
+import { login, getMe } from '../services/auth.service';
 import styles from './Login.module.css';
 
 const Login: React.FC = () => {
@@ -10,6 +10,15 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      const role = localStorage.getItem('role');
+      if (role === 'BRAND') navigate('/products');
+      else if (role === 'PETUGAS') navigate('/scan');
+      else navigate('/');
+    }
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -18,14 +27,25 @@ const Login: React.FC = () => {
     try {
       const data = await login(email, password);
 
-      // Store the session token
       if (data.data && data.data.session) {
         localStorage.setItem('token', data.data.session.access_token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
+        
+        try {
+          const profileData = await getMe();
+          if (profileData.data && profileData.data.role) {
+            const role = profileData.data.role;
+            localStorage.setItem('role', role);
+            if (role === 'BRAND') navigate('/products');
+            else if (role === 'PETUGAS') navigate('/scan');
+            else navigate('/');
+          } else {
+             navigate('/');
+          }
+        } catch(e) {
+          navigate('/');
+        }
       }
-
-      // Redirect to home or dashboard after successful login
-      navigate('/');
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan saat login');
     } finally {

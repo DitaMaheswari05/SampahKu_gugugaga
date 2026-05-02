@@ -52,3 +52,25 @@ export const register = async (payload: any): Promise<RegisterResponse> => {
 
   return data;
 };
+
+export const getMe = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No token');
+  
+  const response = await fetch(`${API_URL}/auth/me`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') throw new Error('Failed to get profile');
+  return data;
+};
+
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('role');
+  window.location.href = '/login';
+};

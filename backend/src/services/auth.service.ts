@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export class AuthService {
     static async register(email: string, password: string, name: string, role: string) {
@@ -14,7 +15,11 @@ export class AuthService {
         if (adminErr) {
             // Fallback: try regular signUp (may work if trigger is disabled/fixed)
             console.warn('admin.createUser failed, trying signUp:', adminErr.message);
-            const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            // Use ephemeral client to avoid polluting global service role client
+            const tempClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+                auth: { persistSession: false, autoRefreshToken: false }
+            });
+            const { data: signUpData, error: signUpErr } = await tempClient.auth.signUp({
                 email,
                 password,
                 options: { data: { name, role } },
@@ -48,7 +53,11 @@ export class AuthService {
     }
 
     static async login(email: string, password: string) {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Use ephemeral client to avoid polluting global service role client
+        const tempClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+        const { data, error } = await tempClient.auth.signInWithPassword({
             email,
             password,
         });
