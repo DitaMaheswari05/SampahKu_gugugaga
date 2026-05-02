@@ -59,7 +59,7 @@ const Login: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.logoHeader}>
           <div className={styles.logoIcon}>
-            <img src="/assets/logo_sampahku.png" alt="Icon" />
+            <img src="../public/assets/logo_sampahku.png" alt="Icon" />
           </div>
           <span className={styles.logoText}>Sampahku</span>
         </div>

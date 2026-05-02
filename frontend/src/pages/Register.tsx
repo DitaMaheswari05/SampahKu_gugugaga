@@ -32,7 +32,6 @@ const Register: React.FC = () => {
     try {
       const payload: any = { name, email, password, role };
       
-      // Syarat backend lama (jangan dihilangkan)
       if (role === 'PETUGAS') {
         if (!stationType) {
           throw new Error('Tipe petugas (Station Type) harus dipilih.');
@@ -76,7 +75,7 @@ const Register: React.FC = () => {
       <div className={styles.card}>
         <div className={styles.logoHeader}>
           <div className={styles.logoIcon}>
-            <img src="/assets/logo_sampahku.png" alt="Icon" />
+            <img src="../public/assets/logo_sampahku.png" alt="Icon" />
           </div>
           <span className={styles.logoText}>Sampahku</span>
         </div>
