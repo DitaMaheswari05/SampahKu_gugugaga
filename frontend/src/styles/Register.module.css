@@ -1,144 +1,273 @@
-.registerContainer {
+/* Container & Background */
+.mobileContainer {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  position: relative;
+  /* Overlay Hijau & Gambar Truk digabung */
+  background: linear-gradient(0deg, rgba(76, 145, 0, 0.3), rgba(76, 145, 0, 0.3)), url('../../public/assets/background_truck.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 16px;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+}
+
+/* Card Registration */
+.card {
+  width: 100%;
+  background: #FFFFFF;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 24px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo Header */
+.logoHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #91C851 0%, #4C9100 100%);
+  border-radius: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
-  background-color: var(--background);
-  padding: 2rem 1rem;
 }
 
-.registerCard {
-  background-color: var(--surface);
-  padding: 2.5rem 2rem;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  max-width: 450px;
+.logoIcon img {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
 }
 
-.logoContainer {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.logoContainer h1 {
-  color: var(--primary);
-  margin: 0;
-  font-size: 2rem;
+.logoText {
+  font-family: 'Poppins', sans-serif;
   font-weight: 700;
+  font-size: 22px;
+  background: linear-gradient(90deg, #4C9100 0%, #91C851 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.logoContainer p {
-  color: var(--text-light);
-  margin-top: 0.5rem;
-  font-size: 0.95rem;
+/* Titles */
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #000000;
+  margin: 0 0 8px 0;
+  text-align: center;
 }
 
-.formGroup {
-  margin-bottom: 1.25rem;
+.subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  color: #737373;
+  text-align: center;
+  margin: 0 0 24px 0;
 }
 
-.formGroup label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--text-main);
-  font-size: 0.9rem;
+/* Role Tabs */
+.tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 36px;
+  border-radius: 50px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.tabActive {
+  background: #EDF4E6;
+  font-weight: 600;
+}
+
+/* Form & Inputs */
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.inputLabel {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #737373;
+  margin-left: 4px;
+}
+
+.inputWrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F9FBF9;
+  border: 1px solid #E4EFD9;
+  border-radius: 14px;
+  padding: 12px 16px;
+  height: 52px;
+  transition: border-color 0.2s;
+}
+
+.inputWrapper:focus-within {
+  border-color: #4C9100;
+}
+
+.inputIcon {
+  width: 18px;
+  height: 18px;
+  color: #737373;
+  margin-right: 12px;
 }
 
 .inputField, .selectField {
+  border: none;
+  background: transparent;
   width: 100%;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  background-color: #FAFAFA;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #000000;
+  outline: none;
+}
+
+.inputField::placeholder {
+  color: #A0A0A0;
 }
 
 .selectField {
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 1em;
+  color: #737373;
 }
 
-.inputField:focus, .selectField:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
-  background-color: var(--surface);
+.selectField:focus {
+  color: #000000;
 }
 
-.registerButton {
+/* Error Message */
+.errorMessage {
   width: 100%;
-  padding: 0.9rem;
-  background-color: var(--primary);
-  color: white;
-  border: none;
+  background-color: rgba(211, 47, 47, 0.1);
+  color: #D32F2F;
+  padding: 10px;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Submit Button */
+.submitBtn {
+  width: 100%;
+  height: 52px;
+  background: #4C9100;
+  border-radius: 14px;
+  border: none;
+  color: #FFFFFF;
+  font-family: 'Poppins', sans-serif;
   font-weight: 600;
+  font-size: 16px;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-  margin-top: 1rem;
+  margin-top: 10px;
+  transition: opacity 0.2s;
 }
 
-.registerButton:hover {
-  background-color: var(--primary-dark);
+.submitBtn:hover {
+  opacity: 0.9;
 }
 
-.registerButton:active {
-  transform: translateY(1px);
-}
-
-.registerButton:disabled {
+.submitBtn:disabled {
   background-color: #A5D6A7;
   cursor: not-allowed;
 }
 
-.errorMessage {
-  background-color: rgba(211, 47, 47, 0.1);
-  color: var(--error);
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.loginPrompt {
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  color: var(--text-light);
+/* Footer Link */
+.footerPrompt {
+  margin-top: 24px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  color: #737373;
 }
 
 .loginLink {
-  color: var(--primary);
+  color: #4C9100;
   font-weight: 600;
-  margin-left: 0.3rem;
   text-decoration: none;
 }
 
-.loginLink:hover {
-  text-decoration: underline;
-}
-
-/* Conditional Field Animation */
+/* Conditional Field Anim */
 .conditionalField {
   animation: slideDown 0.3s ease-out forwards;
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* TOAST NOTIFICATION */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4C9100;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  z-index: 1000;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  width: max-content;
+  max-width: 90%;
+  animation: slideInToast 0.4s ease-out;
+}
+
+@keyframes slideInToast {
+  from { top: -50px; opacity: 0; }
+  to { top: 20px; opacity: 1; }
 }
