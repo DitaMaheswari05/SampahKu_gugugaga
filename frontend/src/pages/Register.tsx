@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register } from '../services/auth.service';
-import styles from './Register.module.css';
+import styles from '../styles/Register.module.css';
 
 const Register: React.FC = () => {
   const [name, setName] = useState('');
