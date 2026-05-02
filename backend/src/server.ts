@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { supabase } from './config/supabase'
 import authRouter from './routes/auth'
+import instancesRouter from './routes/instances'
+import productsRouter from './routes/products'
 
 // Resolve DNS issue
 import dns from 'dns';
@@ -14,6 +16,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors())
 app.use(express.json());
 app.use('/auth', authRouter);
+app.use('/instances', instancesRouter);
+app.use('/products', productsRouter);
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({

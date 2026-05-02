@@ -1,0 +1,95 @@
+import { Request, Response } from 'express';
+import { ProductService } from '../services/product.service';
+
+export const createProduct = async (req: Request, res: Response) => {
+  if (!req.profile || req.profile.role !== 'BRAND') {
+    return res.status(403).json({ status: 'error', message: 'Only BRAND can create products' });
+  }
+
+  const { gtin, product_name, material_passport, category, weight_grams } = req.body;
+
+  if (!gtin || !product_name) {
+    return res.status(400).json({ status: 'error', message: 'gtin and product_name are required' });
+  }
+
+  try {
+    const product = await ProductService.createProduct(req.profile.id, {
+      gtin,
+      product_name,
+      material_passport,
+      category,
+      weight_grams,
+    });
+    return res.status(201).json({ status: 'success', data: product });
+  } catch (e: any) {
+    console.error('createProduct error:', e);
+    // Handle duplicate GTIN
+    if (e.code === '23505') {
+      return res.status(409).json({ status: 'error', message: 'GTIN already exists' });
+    }
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to create product' });
+  }
+};
+
+export const createInstance = async (req: Request, res: Response) => {
+  if (!req.profile || req.profile.role !== 'BRAND') {
+    return res.status(403).json({ status: 'error', message: 'Only BRAND can create instances' });
+  }
+
+  const gtin = req.params.gtin as string;
+  const { identification_type, batch_number, serial_number } = req.body;
+
+  if (!identification_type || !['BATCH', 'UNIQUE'].includes(identification_type)) {
+    return res.status(400).json({ status: 'error', message: 'identification_type must be BATCH or UNIQUE' });
+  }
+
+  try {
+    const result = await ProductService.createInstance(gtin, req.profile.id, {
+      identification_type,
+      batch_number,
+      serial_number,
+    });
+    return res.status(201).json({ status: 'success', data: result });
+  } catch (e: any) {
+    console.error('createInstance error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to create instance' });
+  }
+};
+
+export const listProducts = async (req: Request, res: Response) => {
+  if (!req.profile || req.profile.role !== 'BRAND') {
+    return res.status(403).json({ status: 'error', message: 'Only BRAND can list their products' });
+  }
+
+  try {
+    const products = await ProductService.getProductsByBrand(req.profile.id);
+    return res.status(200).json({ status: 'success', data: products });
+  } catch (e: any) {
+    console.error('listProducts error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to list products' });
+  }
+};
+
+export const getProductDetail = async (req: Request, res: Response) => {
+  const gtin = req.params.gtin as string;
+
+  try {
+    const detail = await ProductService.getProductDetail(gtin);
+    return res.status(200).json({ status: 'success', data: detail });
+  } catch (e: any) {
+    console.error('getProductDetail error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to get product detail' });
+  }
+};
+
+export const getInstanceQR = async (req: Request, res: Response) => {
+  const instanceId = req.params.instanceId as string;
+
+  try {
+    const result = await ProductService.getInstanceQR(instanceId);
+    return res.status(200).json({ status: 'success', data: result });
+  } catch (e: any) {
+    console.error('getInstanceQR error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to generate QR' });
+  }
+};

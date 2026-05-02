@@ -43,6 +43,7 @@
 | Framework | Express.js | ^5.2.1 | REST API |
 | Language | TypeScript | ^6.0.3 | Keseluruhan backend |
 | Database Client | `@supabase/supabase-js` | ^2.105.1 | Koneksi ke Supabase |
+| QR Generation | `qrcode` | ^1.5.x | Generate QR code dari GS1 Digital Link URL |
 | Dev Server | `ts-node-dev` | ^2.0.0 | Hot-reload development |
 
 **Entry point**: `backend/src/server.ts`
@@ -97,21 +98,40 @@ SampahKu_gugugaga/
 │       ├── app.ts          ← Setup app (middleware, routing) — dipisah dari server
 │       ├── config/
 │       │   └── supabase.ts ← Singleton Supabase client (Service Role)
-│       ├── controllers/    ← Request handlers (req/res), tipis — delegasi ke service
-│       ├── routes/         ← Definisi endpoint, hubungkan ke controller
-│       ├── services/       ← Business logic utama, query DB, kalkulasi
-│       └── middlewares/    ← Auth middleware, error handler, logging
+│       ├── constants.ts    ← ROLES enum, POINTS config
+│       ├── controllers/
+│       │   ├── auth.controller.ts     ← Register, login, getMe (dengan try/catch)
+│       │   ├── instances.controller.ts ← Scan instance (biz_step tracking)
+│       │   └── product.controller.ts  ← CRUD produk & instances, QR (BRAND only) ✅
+│       ├── routes/
+│       │   ├── auth.ts
+│       │   ├── instances.ts
+│       │   └── products.ts  ← /products/* endpoints ✅
+│       ├── services/
+│       │   ├── auth.service.ts      ← Register via admin.createUser + profiles upsert ✅
+│       │   ├── instances.service.ts  ← recordScan (status update + activity + points)
+│       │   ├── points.service.ts
+│       │   └── product.service.ts   ← createProduct, createInstance+QR, getProducts+stats ✅
+│       ├── middlewares/
+│       │   └── auth.middleware.ts    ← protect (JWT verify + profile fetch)
+│       └── types/
+│           └── express.d.ts         ← req.user, req.profile type extensions
 └── frontend/
     ├── package.json
     ├── tsconfig.json
     └── src/
-        ├── App.tsx         ← Root component, setup routing
+        ├── App.tsx         ← Root component, setup routing (/login, /register, /products)
         ├── index.tsx       ← ReactDOM render
-        ├── index.css       ← Global styles
+        ├── index.css       ← Global styles (CSS variables: --primary, --secondary, dll)
         ├── components/     ← Komponen UI reusable (Button, Navbar, Card, dll)
-        ├── pages/          ← Halaman utama (satu file per route)
+        ├── pages/
+        │   ├── Login.tsx + Login.module.css
+        │   ├── Register.tsx + Register.module.css
+        │   └── ProductManagement.tsx + ProductManagement.module.css ← Brand dashboard ✅
         ├── hooks/          ← Custom React hooks (useAuth, useFetch, dll)
-        ├── services/       ← API call functions (fetch/axios ke backend)
+        ├── services/
+        │   ├── auth.service.ts    ← login(), register() API calls
+        │   └── product.service.ts ← getProducts(), createProduct(), createInstance(), getInstanceQR() ✅
         ├── styles/         ← CSS files per komponen atau global
         └── utils/          ← Helper functions (format tanggal, string, dll)
 ```
@@ -144,14 +164,12 @@ auth.users (Supabase built-in)
 ### Tabel Detail
 
 #### `profiles`
-Ekstensi dari `auth.users`. Dibuat otomatis saat user register.
+Ekstensi dari `auth.users`. Dibuat saat user register; backend sekarang melakukan insert/`upsert` eksplisit.
 ```sql
 id           uuid PK → auth.users.id
 email        text UNIQUE NOT NULL
 name         text NOT NULL
 role         text CHECK (role IN ('KONSUMEN', 'PETUGAS', 'BRAND'))
-station_type text CHECK (station_type IN ('GEROBAK', 'TPS', 'TRANSPORT', 'BANK_SAMPAH', 'RECYCLER', 'TPA'))
-  -- nullable, hanya diisi jika role = 'PETUGAS'. Menentukan hak akses update status.
 points       integer DEFAULT 0    -- total poin akumulasi
 created_at   timestamptz
 ```
@@ -342,27 +360,18 @@ id         integer PK autoincrement
 nama       text
 created_at timestamptz
 ```
-#### Trigger
+#### Trigger (DIHAPUS)
 ```
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, name, role, station_type)
-  VALUES (
-    new.id, 
-    new.email, 
-    new.raw_user_meta_data->>'name', 
-    new.raw_user_meta_data->>'role',
-    new.raw_user_meta_data->>'station_type'
-  );
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- 3. Pasang Trigger ke tabel auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- ⚠️ TRIGGER `on_auth_user_created` SUDAH DIHAPUS dari database.
+-- Trigger ini sebelumnya menyebabkan error "Database error saving new user" karena
+-- schema mismatch antara trigger INSERT dan kolom aktual tabel profiles.
+--
+-- Backend sekarang menangani pembuatan profil secara eksplisit:
+--   1. auth.service.ts → admin.createUser() + profiles.upsert()
+--   2. auth.middleware.ts → fallback: jika profile missing, auto-create dari user_metadata
+--
+-- JANGAN buat ulang trigger ini.
+```
 
 ---
 
@@ -496,39 +505,42 @@ Ketika QR di-scan, sistem resolve URL → lookup `product_instances` berdasarkan
 
 Base URL: `http://localhost:5000` (dev)
 
-### Auth
-| Method | Endpoint | Deskripsi | Role |
-|---|---|---|---|
-| POST | `/auth/register` | Register user baru | Public |
-| POST | `/auth/login` | Login & dapat JWT | Public |
-| GET | `/auth/me` | Get profil user terautentikasi | All |
+### Auth ✅ IMPLEMENTED
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| POST | `/auth/register` | Register user baru (via `admin.createUser`) | Public | ✅ |
+| POST | `/auth/login` | Login & dapat JWT | Public | ✅ |
+| GET | `/auth/me` | Get profil user terautentikasi | All | ✅ |
 
-### Products
-| Method | Endpoint | Deskripsi | Role |
-|---|---|---|---|
-| GET | `/products` | List semua produk | All |
-| GET | `/products/:gtin` | Detail produk by GTIN | All |
-| POST | `/products` | Daftarkan produk baru | BRAND |
-| POST | `/products/:gtin/instances` | Buat instance/QR baru | BRAND |
+### Products ✅ IMPLEMENTED
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| GET | `/products` | List produk milik brand + aggregated stats | BRAND | ✅ |
+| GET | `/products/:gtin` | Detail produk + semua instances + stats | BRAND | ✅ |
+| POST | `/products` | Daftarkan produk baru | BRAND | ✅ |
+| POST | `/products/:gtin/instances` | Buat instance + generate QR GS1 Digital Link | BRAND | ✅ |
+| GET | `/products/instances/:instanceId/qr` | Generate QR code untuk instance existing | BRAND | ✅ |
+
+> **Catatan routing**: `/products/instances/*` route HARUS didefinisikan sebelum `/products/:gtin` di Express agar `"instances"` tidak di-match sebagai parameter `:gtin`.
 
 ### Instances & Tracking
-| Method | Endpoint | Deskripsi | Role |
-|---|---|---|---|
-| GET | `/instances/:id` | Detail instance + history | All |
-| GET | `/instances/:id/activities` | Timeline perjalanan instance | All |
-| POST | `/instances/:id/scan` | Scan & catat aktivitas baru | KONSUMEN / PETUGAS |
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| GET | `/instances/:id` | Detail instance + history | All | ⬜ Planned |
+| GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ⬜ Planned |
+| POST | `/instances/:id/scan` | Scan & catat aktivitas baru | KONSUMEN / PETUGAS | ✅ |
 
 ### User / Dashboard
-| Method | Endpoint | Deskripsi | Role |
-|---|---|---|---|
-| GET | `/users/me/collections` | Produk yang sudah dikumpulkan | KONSUMEN |
-| GET | `/users/me/points` | Total poin + riwayat | KONSUMEN / PETUGAS |
-| GET | `/dashboard/stats` | Statistik agregat (publik) | Public |
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| GET | `/users/me/collections` | Produk yang sudah dikumpulkan | KONSUMEN | ⬜ Planned |
+| GET | `/users/me/points` | Total poin + riwayat | KONSUMEN / PETUGAS | ⬜ Planned |
+| GET | `/dashboard/stats` | Statistik agregat (publik) | Public | ⬜ Planned |
 
 ### QR Resolver
-| Method | Endpoint | Deskripsi | Role |
-|---|---|---|---|
-| GET | `/resolve` | Resolve GS1 Digital Link → instance data | Public |
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| GET | `/resolve` | Resolve GS1 Digital Link → instance data | Public | ⬜ Planned |
 
 ---
 
@@ -548,7 +560,7 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 ### Halaman Utama (dari mockup)
 **Konsumen (Mobile-first)**:
 1. **Landing / Home** — Ilustrasi alam, tagline, CTA "Mulai Scan"
-2. **Login / Register** — Form sederhana, pilih role
+2. **Login / Register** — Form sederhana, pilih role ✅
 3. **Scan QR** — Kamera scanner + form konfirmasi
 4. **Detail Produk** — Info produk + timeline perjalanan sampah
 5. **Dashboard Konsumen** — Poin, jumlah sampah dikumpulkan, history
@@ -561,15 +573,20 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 
 **Brand (Web Dashboard)**:
 1. **Dashboard Brand** — Statistik produk terdaftar, recovery rate
-2. **Manajemen Produk** — CRUD produk + generate QR
+2. **Manajemen Produk** — CRUD produk + generate QR ✅ **IMPLEMENTED** (`/products`)
+   - Tabel produk: nama, GTIN, kategori, total instances, recovery rate (% recycled), status breakdown (progress bar)
+   - Modal "Tambah Produk Baru": form popup dengan input nama, GTIN, kategori (select), berat
+   - Modal "Buat Instance Baru": toggle BATCH/UNIQUE, input identifier, live GS1 Digital Link preview
+   - Modal QR Display: tampilkan QR code hasil generate, GS1 URL, tombol download PNG
+   - Detail expandable: klik "Detail" pada baris produk → tampilkan grid instance cards dengan status badge & tombol QR per-instance
 3. **Tracking Report** — Per-produk journey analytics
 
 **Publik (Web)**:
 1. **Public Dashboard** — Visualisasi agregat: total sampah terlacak, distribusi per kategori, peta sebaran
 
-> **Catatan Implementasi Figma (Screen yang Missing)**:
+> **Catatan Implementasi (Screen yang Missing)**:
 > Saat mengembangkan UI, beberapa flow yang belum ada di mockup harus ditambahkan:
-> 1. Form pilihan `station_type` saat register khusus untuk Petugas.
+> 1. ~~Form pilihan `station_type` saat register khusus untuk Petugas~~ → sudah ada di Register.tsx
 > 2. Flow "Jalur B" (Konsumen setor langsung ke Bank Sampah tanpa lewat TPS).
 > 3. Form input "Jenis Material" saat petugas melakukan proses SORTED/inspecting.
 > 4. Mode "Bulk Scan" untuk petugas agar bisa scan banyak item sekaligus tanpa delay.
@@ -597,18 +614,25 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 1. **Jangan pernah** gunakan Supabase Anon Key di backend — selalu Service Role Key.
 2. **Selalu** ikuti konvensi folder: controllers tipis, logic di services.
 3. **Status lifecycle** `current_status` harus selalu diupdate di `product_instances` setiap ada aktivitas baru.
-4. **Poin** harus dicatat di dua tempat: `point_history` (per transaksi) dan `profiles.points` (total akumulasi).
+4. **Poin** harus dicatat di dua tempat: `point_history` (per transaksi) dan `profiles.points` (total akumulasi). Implementasi backend harus berusaha melakukan update secara atomik (gunakan DB function/transaction jika memungkinkan).
 5. **`epcis_body`** adalah JSONB — simpan full EPCIS 2.0 event payload, bukan ringkasan.
 6. **QR code** mewakili `product_instances`, bukan `products`. Satu GTIN bisa punya banyak instances.
 7. **`blockchain_hash`** di `activities` adalah field opsional — dikosongkan jika integrasi Hyperledger belum aktif.
 8. **`evidence_url`** adalah URL file di Supabase Storage — handle upload terpisah dari insert activity.
 9. Frontend menggunakan **React 19** dan **TypeScript 4.9** — perhatikan compatibility.
-10. Backend menggunakan **Express 5** — syntax beberapa hal berbeda dari Express 4 (misal: async error handling otomatis, tidak perlu `next(err)` manual di async routes).
-11. **Lifecycle** tidak harus linear — sistem harus memfasilitasi "Jalur A" (via TPS) dan "Jalur B" (langsung Bank Sampah). Petugas hanya bisa update status sesuai dengan otoritas `station_type`-nya.
-12. **Sistem poin TBD** — jangan hardcode angka poin di kode sebelum tim menentukannya. Gunakan konstanta/config yang mudah diubah.
+10. Backend menggunakan **Express 5** — syntax beberapa hal berbeda dari Express 4 (misal: async error handling otomatis, tidak perlu `next(err)` manual di async routes). **Perhatikan**: `req.params` di Express 5 bertipe `string | string[]`, perlu cast ke `string` saat pass ke function.
+11. **Lifecycle** tidak harus linear — sistem harus memfasilitasi "Jalur A" (via TPS) dan "Jalur B" (langsung Bank Sampah). Petugas hanya bisa update status sesuai dengan otoritas role-nya.
+12. **Sistem poin TBD** — jangan hardcode angka poin di kode sebelum tim menentukannya. Gunakan konstanta/config yang mudah diubah. Backend menyediakan `POINTS` config sebagai placeholder.
 13. Alur nyata Indonesia: **Gerobak RT → TPS → Truk DLH → Bank Sampah/TPA** — setiap perpindahan adalah 1 scan point petugas.
 14. **`biz_step: 'discarding'`** digunakan oleh KONSUMEN, sedangkan `biz_step: 'disposing'` digunakan oleh PETUGAS (untuk landfill akhir). Jangan sampai tertukar.
+15. **Explicit profiles insert** — backend menggunakan `admin.createUser()` (bypass DB trigger) lalu `profiles.upsert()` secara eksplisit. **JANGAN** buat DB trigger `on_auth_user_created` — sudah dihapus karena menyebabkan error.
+16. **Enumerasi role** — gunakan enum/konstanta `['KONSUMEN','PETUGAS','BRAND']` di backend untuk validasi input.
+17. **Server-side checks** — semua endpoint yang mengubah `product_instances.current_status` harus melakukan validasi role sebelum update (mis. hanya `PETUGAS` yang boleh menandai `RECYCLED`).
+18. **Auth controller error handling** — semua controller methods HARUS di-wrap dalam `try/catch` dan return proper JSON error response. Jangan biarkan error propagate unhandled.
+19. **QR Code generation** — menggunakan library `qrcode` (npm). Output berupa base64 data URL PNG. QR encode GS1 Digital Link URL (`https://sampahku.id/01/{GTIN}/21/{serial}` atau `/10/{batch}`).
+20. **Product stats aggregation** — `GET /products` mengembalikan stats per-produk (total instances, recycled count, disposed count, in_progress count, in_market count) yang di-aggregate dari `product_instances.current_status`.
+21. **Frontend modal pattern** — form pembuatan produk/instance menggunakan popup modal (overlay + animated card), bukan halaman terpisah. Modal di-close pada klik overlay atau tombol X.
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29 dan merepresentasikan state proyek pada saat hackathon dimulai.*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-02 (implementasi product management + QR generation).*
