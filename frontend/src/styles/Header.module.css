@@ -6,7 +6,7 @@
   background-color: var(--surface);
   border-bottom: 1px solid var(--border-color);
   width: 100%;
-  max-width: 430px; /* Sesuai standar layout mobile Figma */
+  max-width: 430px;
   margin: 0 auto;
   box-sizing: border-box;
 }
@@ -18,7 +18,7 @@
   gap: 10px;
 }
 
-.logoBox {
+/* .logoBox {
   width: 38px;
   height: 38px;
   background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -26,12 +26,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-}
+} */
 
-.logoIcon {
-  width: 20px;
-  height: 20px;
-  color: #FFFFFF;
+.logoBox img {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .logoText {

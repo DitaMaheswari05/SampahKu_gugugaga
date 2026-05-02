@@ -8,22 +8,7 @@ const Header: React.FC = () => {
       <div className={styles.leftSection}>
         <div className={styles.logoBox}>
           {/* Icon Recycle */}
-          <svg 
-            className={styles.logoIcon} 
-            viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
-            <polyline points="21 8 21 2 15 2"></polyline>
-            <polyline points="3 16 3 22 9 22"></polyline>
-            <path d="M21 8 13 16"></path>
-            <path d="M3 16 11 8"></path>
-            <path d="M15 22h6v-6"></path>
-            <path d="M9 2H3v6"></path>
-          </svg>
+          <img src="/assets/logo_sampahku.png" alt="SampahKu" />
         </div>
         <h1 className={styles.logoText}>SampahKu</h1>
       </div>
