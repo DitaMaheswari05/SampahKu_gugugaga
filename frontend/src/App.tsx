@@ -8,6 +8,7 @@ import Home from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
+import DetailSampah from './pages/DetailSampah';
 import './App.css';
 
 // Komponen Wrapper untuk memproteksi Route berdasarkan status login dan role
@@ -72,6 +73,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['KONSUMEN']}>
               <KonsumenScan />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/detail-sampah/:id" 
+          element={
+            <ProtectedRoute allowedRoles={['KONSUMEN']}>
+              <DetailSampah />
             </ProtectedRoute>
           } 
         />

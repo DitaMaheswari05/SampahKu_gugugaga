@@ -1,4 +1,3 @@
-// src/pages/KonsumenScan.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -15,12 +14,12 @@ export default function KonsumenScan() {
   const [instance, setInstance] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isCameraOpen, setIsCameraOpen] = useState(false); // State untuk melacak status kamera
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pastikan hanya role KONSUMEN yang menggunakan halaman ini
+  // Pastikan hanya role konsumen yang menggunakan halaman ini
   useEffect(() => {
     const role = localStorage.getItem('role');
     if (role && role !== 'KONSUMEN') {
@@ -29,14 +28,12 @@ export default function KonsumenScan() {
     }
   }, [navigate]);
 
-  // Cleanup kamera saat komponen di-unmount agar kamera tidak nyala terus di background
   useEffect(() => {
     return () => {
       stopScanner();
     };
   }, []);
 
-  // --- KONTROL KAMERA SECARA MANUAL ---
   const startScanner = async () => {
     setErrorMsg('');
     try {
@@ -44,7 +41,6 @@ export default function KonsumenScan() {
         html5QrCodeRef.current = new Html5Qrcode("qr-reader");
       }
       
-      // Menggunakan facingMode: 'environment' agar langsung menggunakan kamera belakang
       await html5QrCodeRef.current.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -76,7 +72,6 @@ export default function KonsumenScan() {
   };
 
   const onScanFailure = (err: any) => {
-    // Abaikan error pembacaan per-frame karena ini wajar saat belum ada QR di layar
   };
 
   // Fungsi Scan dari Upload File Gambar
