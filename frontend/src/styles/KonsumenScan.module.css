@@ -1,0 +1,273 @@
+.mobileContainer {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background-color: var(--background);
+  position: relative;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.headerText {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: #000000;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--text-gray);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Card General */
+.card {
+  background: #FFFFFF;
+  box-shadow: 0px 14px 22px rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* State 1: Scanner */
+.cameraBox {
+  width: 100%;
+  background: #F5F6F8;
+  border: 2px dashed #D1D5DC;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 250px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scannerContainer {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cameraText {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: #4A5565;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.cameraSubText {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: #99A1AF;
+  text-align: center;
+}
+
+.btnPrimary {
+  width: 100%;
+  height: 52px;
+  background: var(--primary);
+  border-radius: 14px;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnSecondary {
+  width: 100%;
+  height: 52px;
+  background: #FFFFFF;
+  border: 2px solid #E5E7EB;
+  border-radius: 14px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: #364153;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btnSecondary:hover {
+  background: #F9FAFB;
+}
+
+/* State 2: Result Preview */
+.qrPlaceholder {
+  width: 180px;
+  height: 180px;
+  background: #FFF5E9;
+  border: 1px solid var(--background);
+  border-radius: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+.qrImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.infoContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infoRow {
+  background: linear-gradient(90deg, #F9FAFB 0%, #F3F4F6 100%);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.infoLabel {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #6A7282;
+}
+
+.infoLabelBrand {
+  color: var(--primary-light);
+}
+
+.infoValue {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #101828;
+  word-break: break-all;
+}
+
+.infoValueMono {
+  font-family: 'Consolas', monospace;
+  font-weight: 400;
+}
+
+.errorAlert {
+  width: 100%;
+  background-color: #FEE2E2;
+  color: #DC2626;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 16px;
+  border: 1px solid #F87171;
+}
+
+.loadingText {
+  font-family: 'Poppins', sans-serif;
+  color: var(--primary);
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* State 3 & 4: Status Berhasil / Gagal */
+.statusContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 32px 0 16px 0;
+  width: 100%;
+}
+
+.iconCircle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.iconGreen {
+  background: linear-gradient(90deg, #4C9100 0%, #91C851 100%);
+}
+
+.iconRed {
+  background: #FB2C36;
+}
+
+.iconCircle svg {
+  width: 52px;
+  height: 52px;
+}
+
+.statusTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: #101828;
+  margin: 0;
+  text-align: center;
+}
+
+.statusDesc {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  color: #4A5565;
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}

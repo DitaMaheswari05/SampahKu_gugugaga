@@ -7,6 +7,7 @@ import PetugasScan from './pages/PetugasScan';
 import Home from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import Logout from './pages/Logout';
+import KonsumenScan from './pages/KonsumenScan';
 import './App.css';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/scan" element={<PetugasScan />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/logout" element={<Logout />} />
+        <Route path="/tambah-sampah" element={<KonsumenScan />} />
         <Route path="/" element={<Home />} />
         {/* Redirect any unknown route to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
