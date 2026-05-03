@@ -75,4 +75,21 @@ export class AuthService {
         if (error) throw error;
         return data;
     }
+
+    static async getGoogleOAuthUrl(redirectTo: string) {
+        const tempClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+        const { data, error } = await tempClient.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo,
+                queryParams: {
+                    prompt: 'consent'
+                }
+            },
+        });
+        if (error) throw error;
+        return data.url;
+    }
 }

@@ -13,10 +13,37 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if coming from Google OAuth (Implicit Flow)
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get('access_token');
+      if (token) {
+        localStorage.setItem('token', token);
+        // Clear hash from URL for security/cleanliness
+        window.history.replaceState(null, '', window.location.pathname);
+        
+        getMe().then(profileData => {
+          if (profileData.data && profileData.data.role) {
+            const userRole = profileData.data.role;
+            localStorage.setItem('role', userRole);
+            if (userRole === 'BRAND') navigate('/products');
+            else if (userRole === 'PETUGAS') navigate('/scan');
+            else navigate('/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }).catch(() => {
+          navigate('/dashboard');
+        });
+        return; // wait for redirect
+      }
+    }
+
     if (localStorage.getItem('token')) {
-      const role = localStorage.getItem('role');
-      if (role === 'BRAND') navigate('/products');
-      else if (role === 'PETUGAS') navigate('/scan');
+      const storedRole = localStorage.getItem('role');
+      if (storedRole === 'BRAND') navigate('/products');
+      else if (storedRole === 'PETUGAS') navigate('/scan');
       else navigate('/dashboard');
     }
   }, [navigate]);

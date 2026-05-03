@@ -12,6 +12,8 @@ router.get('/register', (req, res) => {
     return res.status(200)
 })
 
+router.get('/google', authController.googleLogin);
+
 router.post('/login', authController.login)
 router.post('/register', authController.register);
 

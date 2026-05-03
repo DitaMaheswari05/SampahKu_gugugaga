@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import styles from './ProductManagement.module.css';
 
 const API_URL = 'http://localhost:5000';
 
 export default function PetugasScan() {
-  const [scanResult, setScanResult] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const [instance, setInstance] = useState<any>(null);
   const [error, setError] = useState('');
@@ -44,6 +43,7 @@ export default function PetugasScan() {
         scannerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScanning]);
 
   const onScanSuccess = (decodedText: string) => {
@@ -52,7 +52,6 @@ export default function PetugasScan() {
       scannerRef.current = null;
     }
     setIsScanning(false);
-    setScanResult(decodedText);
     resolveGS1Link(decodedText);
   };
 
@@ -153,7 +152,6 @@ export default function PetugasScan() {
 
       alert('Berhasil memperbarui status sampah!');
       // Reset
-      setScanResult(null);
       setInstance(null);
       setIsScanning(true);
       setEvidenceFile(null);
@@ -241,7 +239,7 @@ export default function PetugasScan() {
               <button type="submit" className={styles.btnPrimary} disabled={loading}>
                 Simpan & Dapatkan Poin
               </button>
-              <button type="button" className={styles.btnSecondary} onClick={() => { setInstance(null); setIsScanning(true); setScanResult(null); }}>
+              <button type="button" className={styles.btnSecondary} onClick={() => { setInstance(null); setIsScanning(true); }}>
                 Batal / Scan Ulang
               </button>
             </div>

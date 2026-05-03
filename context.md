@@ -496,8 +496,7 @@ Ketika QR di-scan, sistem resolve URL → lookup `product_instances` berdasarkan
 
 ### Supabase Client
 - **Backend**: gunakan `SUPABASE_SERVICE_KEY` (Service Role) → bypass semua RLS
-- **Frontend** (jika ada direct Supabase call): gunakan Anon Key dengan RLS aktif
-- Preferensi: semua data access **melalui backend API**, frontend tidak direct call Supabase kecuali untuk Auth
+- **Frontend**: Frontend **SEPENUHNYA TERPISAH** dari Supabase. Tidak ada instalasi `@supabase/supabase-js` di frontend. Semua interaksi database dan autentikasi (termasuk generate URL Google OAuth) dilakukan melalui panggilan REST API ke backend.
 
 ---
 
@@ -511,6 +510,7 @@ Base URL: `http://localhost:5000` (dev)
 | POST | `/auth/register` | Register user baru (via `admin.createUser`) | Public | ✅ |
 | POST | `/auth/login` | Login & dapat JWT | Public | ✅ |
 | GET | `/auth/me` | Get profil user terautentikasi | All | ✅ |
+| GET | `/auth/google` | Generate URL Supabase OAuth untuk Google Login (Implicit flow) | Public | ✅ |
 
 ### Products ✅ IMPLEMENTED
 | Method | Endpoint | Deskripsi | Role | Status |
@@ -643,7 +643,8 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 22. **Supabase Auth Session Pollution**: Fungsi `signInWithPassword` dan `signUp` di backend **HARUS** menggunakan instansiasi client Ephemeral (sementara) dengan opsi `persistSession: false`. Hal ini krusial untuk mencegah tercemarnya singleton `supabase` (Service Role) oleh session JWT user biasa, yang menyebabkan RLS tiba-tiba aktif dan menggagalkan query backend lainnya (seperti error *RLS violation* saat BRAND membuat produk).
 23. **Uploads Architecture**: Frontend **tidak boleh** berinteraksi langsung dengan Supabase Storage. File dikirim via `FormData` ke backend `/upload/evidence` menggunakan `multer` (memory storage), dan backend yang akan menggunakan Service Role untuk upload ke Supabase Storage, mengembalikan `evidence_url` ke frontend.
 24. **Auth Middleware Fallback**: Jika query ke tabel `profiles` gagal, middleware otentikasi akan menggunakan data `user_metadata` dari token JWT sebagai cadangan (fallback), memastikan sistem RBAC (`req.profile.role`) tetap berfungsi bahkan jika ada *delay* sinkronisasi database.
+25. **Frontend Supabase Decoupling**: Frontend tidak memuat SDK Supabase. Autentikasi OAuth (Google) dilakukan dengan cara frontend memanggil `GET /auth/google`, lalu backend me-return URL Supabase OAuth, frontend me-redirect pengguna ke URL tersebut, dan Supabase me-redirect kembali ke frontend dengan `#access_token=...` yang kemudian di-parsing secara lokal di frontend.
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-02 (implementasi fitur Petugas Scan, Upload Evidence, dan Architectural Session Bugfix).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-03 (Penghapusan total Supabase Client dari Frontend).*
