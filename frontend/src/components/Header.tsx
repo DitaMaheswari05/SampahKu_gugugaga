@@ -1,9 +1,41 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getMe } from '../services/auth.service';
 import styles from '../styles/Header.module.css';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  // State untuk menyimpan nama pengguna yang ditarik dari database
+  const [userName, setUserName] = useState<string>('Memuat...');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Cek data lokal sebagai nilai awal yang cepat
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if (user?.user_metadata?.name) {
+            setUserName(user.user_metadata.name);
+          } else if (user?.name) {
+            setUserName(user.name);
+          }
+        }
+
+        const response = await getMe();
+        if (response.data) {
+          // Gunakan name dari tabel profiles (prioritas utama), fallback ke metadata auth
+          const name = response.data.name || response.data.user_metadata?.name || 'Pengguna';
+          setUserName(name);
+        }
+      } catch (error) {
+        console.error('Gagal mengambil data pengguna dari database:', error);
+        setUserName('Pengguna');
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Fungsi untuk mengarahkan ke halaman konfirmasi logout dengan membawa state
   const handleLogoutClick = () => {
@@ -29,10 +61,9 @@ const Header: React.FC = () => {
         </div>
         <div className={styles.userInfo}>
           <span className={styles.greetingText}>
-            Halo, <span className={styles.userName}>Alice Maharani</span>
+            Halo, <span className={styles.userName}>{userName}</span>
           </span>
         </div>
-
         <button className={styles.logoutBtn} onClick={handleLogoutClick} aria-label="Keluar">
           <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
