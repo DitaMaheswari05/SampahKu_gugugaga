@@ -8,7 +8,7 @@ import {
   Product,
   ProductDetail,
 } from '../services/product.service';
-import styles from './ProductManagement.module.css';
+import styles from '../styles/ProductManagement.module.css';
 
 // ─── Status helpers ────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {

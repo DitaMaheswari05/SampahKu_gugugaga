@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import styles from './ProductManagement.module.css';
+import styles from '../styles/ProductManagement.module.css';
 
 const API_URL = 'http://localhost:5000';
 
