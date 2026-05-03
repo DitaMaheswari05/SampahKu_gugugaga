@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
+import Logout from './pages/Logout';
 import './App.css';
 
 function App() {
@@ -12,7 +13,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} /> {/* Route Baru */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/logout" element={<Logout />} />
         <Route path="/" element={<Home />} />
         {/* Redirect any unknown route to home */}
         <Route path="*" element={<Navigate to="/" replace />} />
