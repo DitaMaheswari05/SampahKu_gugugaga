@@ -54,6 +54,58 @@
   gap: 20px;
 }
 
+/* Form Styling - Dipindahkan dari Inline Style */
+.formGroup {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inputStyle {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  background-color: #F9FAFB;
+  box-sizing: border-box; /* Pastikan padding tidak merusak lebar */
+  transition: border-color 0.2s;
+}
+
+.inputStyle:focus {
+  border-color: var(--primary);
+}
+
+.fileInput {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  outline: none;
+  background-color: #F9FAFB;
+  box-sizing: border-box;
+}
+
+.formActions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+
 /* State 1: Scanner */
 .cameraBox {
   width: 100%;
