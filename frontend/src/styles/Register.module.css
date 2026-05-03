@@ -1,0 +1,273 @@
+/* Container & Background */
+.mobileContainer {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  position: relative;
+  /* Overlay Hijau & Gambar Truk digabung */
+  background: linear-gradient(0deg, rgba(76, 145, 0, 0.3), rgba(76, 145, 0, 0.3)), url('../../public/assets/background_truck.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 16px;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+}
+
+/* Card Registration */
+.card {
+  width: 100%;
+  background: #FFFFFF;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 24px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo Header */
+.logoHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #91C851 0%, #4C9100 100%);
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.logoIcon img {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
+}
+
+.logoText {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  background: linear-gradient(90deg, #4C9100 0%, #91C851 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Titles */
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #000000;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  color: #737373;
+  text-align: center;
+  margin: 0 0 24px 0;
+}
+
+/* Role Tabs */
+.tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 36px;
+  border-radius: 50px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.tabActive {
+  background: #EDF4E6;
+  font-weight: 600;
+}
+
+/* Form & Inputs */
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.inputLabel {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #737373;
+  margin-left: 4px;
+}
+
+.inputWrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: #F9FBF9;
+  border: 1px solid #E4EFD9;
+  border-radius: 14px;
+  padding: 12px 16px;
+  height: 52px;
+  transition: border-color 0.2s;
+}
+
+.inputWrapper:focus-within {
+  border-color: #4C9100;
+}
+
+.inputIcon {
+  width: 18px;
+  height: 18px;
+  color: #737373;
+  margin-right: 12px;
+}
+
+.inputField, .selectField {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #000000;
+  outline: none;
+}
+
+.inputField::placeholder {
+  color: #A0A0A0;
+}
+
+.selectField {
+  appearance: none;
+  color: #737373;
+}
+
+.selectField:focus {
+  color: #000000;
+}
+
+/* Error Message */
+.errorMessage {
+  width: 100%;
+  background-color: rgba(211, 47, 47, 0.1);
+  color: #D32F2F;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Submit Button */
+.submitBtn {
+  width: 100%;
+  height: 52px;
+  background: #4C9100;
+  border-radius: 14px;
+  border: none;
+  color: #FFFFFF;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+}
+
+.submitBtn:hover {
+  opacity: 0.9;
+}
+
+.submitBtn:disabled {
+  background-color: #A5D6A7;
+  cursor: not-allowed;
+}
+
+/* Footer Link */
+.footerPrompt {
+  margin-top: 24px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  color: #737373;
+}
+
+.loginLink {
+  color: #4C9100;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Conditional Field Anim */
+.conditionalField {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* TOAST NOTIFICATION */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4C9100;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  z-index: 1000;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  width: max-content;
+  max-width: 90%;
+  animation: slideInToast 0.4s ease-out;
+}
+
+@keyframes slideInToast {
+  from { top: -50px; opacity: 0; }
+  to { top: 20px; opacity: 1; }
+}

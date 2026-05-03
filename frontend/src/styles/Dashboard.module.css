@@ -1,0 +1,280 @@
+.mobileContainer {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  background-color: var(--background);
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  padding-bottom: 30px;
+}
+
+.content {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Banner Section */
+.bannerImage {
+  margin-top: 20px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+/* .bannerImage {
+  right: 10px;
+  bottom: 20px;
+  width: 140px;
+  margin: 0;
+  z-index: 1;
+  position: relative;
+  object-fit: contain;
+} */
+
+/* .bannerImage {
+  position: absolute;
+  right: -10px;
+  bottom: -20px;
+  width: 140px;
+  object-fit: contain;
+  z-index: 1;
+} */
+
+/* Circular Wallet Section */
+.walletSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.sectionSubtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-gray);
+  margin: 4px 0 0 0;
+}
+
+/* Scroll Horizontal Container for Wallet Cards */
+.statsScrollContainer {
+  display: flex;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.statLabel {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.iconWrapper {
+  width: 28px;
+  height: 28px;
+  background: var(--primary-light);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.statValue {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.statDesc {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-gray);
+  margin: 0;
+}
+
+/* Daftar Sampah Section */
+.listSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addButton {
+  background: var(--primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 14px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.addButton:hover {
+  opacity: 0.9;
+}
+
+/* List Items */
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.listItem {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0px 4px 10px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.listItem:active {
+  transform: scale(0.98);
+}
+
+.itemIcon {
+  width: 48px;
+  height: 48px;
+  background: var(--secondary);
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.itemDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemName {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.gtinText {
+  font-family: 'Consolas', monospace;
+  color: var(--text-gray);
+  background: #F3F4F6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.dot {
+  color: #BBBBBB;
+}
+
+.dateText {
+  font-family: 'Inter', sans-serif;
+  color: var(--text-gray);
+}
+
+.itemRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chevron {
+  flex-shrink: 0;
+}
+
+/* Status Badges */
+.statusBadge {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  padding: 6px 12px;
+  border-radius: 50px;
+  white-space: nowrap;
+}
+
+.statusGreen {
+  background: #DCFCE7;
+  color: #008236;
+}
+
+.statusOrange {
+  background: #FFEDD4;
+  color: #CA3500;
+}
+
+.statusYellow {
+  background: #FEF9C2;
+  color: #A65F00;
+}
+
+.statusBlue {
+  background: #DBEAFE;
+  color: #1447E6;
+}
