@@ -1,24 +1,40 @@
-// src/pages/Logout.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { getMe, logout } from '../services/auth.service';
 import styles from '../styles/Logout.module.css';
 
 const Logout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [userName, setUserName] = useState('XXX');
+  const [userName, setUserName] = useState<string>('Memuat...');
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
+    const fetchUserData = async () => {
       try {
-        const user = JSON.parse(userStr);
-        if (user.name) setUserName(user.name);
-      } catch (e) {
-        console.error("Gagal membaca data user");
+        // Cek data lokal sebagai nilai awal yang cepat
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if (user?.user_metadata?.name) {
+            setUserName(user.user_metadata.name);
+          } else if (user?.name) {
+            setUserName(user.name);
+          }
+        }
+
+        // Fetch data asli dari database via backend
+        const response = await getMe();
+        if (response.data) {
+          const name = response.data.name || response.data.user_metadata?.name || 'Pengguna';
+          setUserName(name);
+        }
+      } catch (error) {
+        console.error('Gagal membaca data pengguna dari database:', error);
+        setUserName('Pengguna');
       }
-    }
+    };
+
+    fetchUserData();
   }, []);
 
   if (!location.state || !location.state.fromButton) {
@@ -26,15 +42,10 @@ const Logout: React.FC = () => {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // Arahkan ke Homepage
-    navigate('/', { replace: true });
+    logout();
   };
 
   const handleCancel = () => {
-    // Kembali ke halaman Dashboard
     navigate(-1);
   };
 
