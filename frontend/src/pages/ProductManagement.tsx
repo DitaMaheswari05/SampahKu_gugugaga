@@ -1,3 +1,4 @@
+// src/pages/ProductManagement.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   getProducts,
@@ -8,9 +9,9 @@ import {
   Product,
   ProductDetail,
 } from '../services/product.service';
+import Header from '../components/Header';
 import styles from '../styles/ProductManagement.module.css';
 
-// ─── Status helpers ────────────────────────────────────────
 const STATUS_LABELS: Record<string, string> = {
   IN_MARKET: 'Di Pasaran',
   DISCARDED: 'Dibuang',
@@ -41,7 +42,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// ─── Icons (inline SVG) ────────────────────────────────────
+// --- Icons (inline SVG) ---
 const PlusIcon = () => (
   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -87,7 +88,8 @@ const DownloadIcon = () => (
   </svg>
 );
 
-// ─── Main Component ────────────────────────────────────────
+
+// --- Main Component ---
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,27 +163,8 @@ const ProductManagement: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      {/* Navbar */}
-      <nav className={styles.navbar}>
-        <div className={styles.navBrand}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-            <line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
-          </svg>
-          SampahKu
-        </div>
-        <div className={styles.navLinks}>
-          <a href="/">Dashboard</a>
-          <a href="/products" className={styles.active}>Manajemen Produk</a>
-        </div>
-        <div className={styles.navUser}>
-          <span>Halo, {user?.user_metadata?.name || 'Brand'}</span>
-          <div className={styles.userAvatar}>
-            {(user?.user_metadata?.name || 'B')[0].toUpperCase()}
-          </div>
-        </div>
-      </nav>
+      {/* Menggunakan komponen Header re-usable */}
+      <Header />
 
       {/* Content */}
       <div className={styles.content}>
@@ -242,7 +225,7 @@ const ProductManagement: React.FC = () => {
                       </td>
                       <td>
                         <span className={`${styles.badge} ${styles.badgeBlue}`}>
-                          {p.category || '—'}
+                          {p.category || '-'}
                         </span>
                       </td>
                       <td>
@@ -270,7 +253,7 @@ const ProductManagement: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>—</span>
+                          <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>-</span>
                         )}
                       </td>
                       <td>{formatDate(p.created_at)}</td>
@@ -285,6 +268,7 @@ const ProductManagement: React.FC = () => {
                         </div>
                       </td>
                     </tr>
+
                     {/* Expanded detail row */}
                     {expandedGtin === p.gtin && (
                       <tr className={styles.detailRow}>
@@ -339,7 +323,7 @@ const ProductManagement: React.FC = () => {
         )}
       </div>
 
-      {/* ─── Modal: Create Product ─── */}
+      {/* --- Modal: Create Product --- */}
       {showCreateProduct && (
         <CreateProductModal
           onClose={() => setShowCreateProduct(false)}
@@ -347,7 +331,7 @@ const ProductManagement: React.FC = () => {
         />
       )}
 
-      {/* ─── Modal: Create Instance ─── */}
+      {/* --- Modal: Create Instance --- */}
       {showCreateInstance && (
         <CreateInstanceModal
           gtin={showCreateInstance}
@@ -364,12 +348,12 @@ const ProductManagement: React.FC = () => {
         />
       )}
 
-      {/* ─── Modal: QR Display ─── */}
+      {/* --- Modal: QR Display --- */}
       {showQR && (
         <div className={styles.modalOverlay} onClick={() => setShowQR(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>QR Code — GS1 Digital Link</h2>
+              <h2 className={styles.modalTitle}>QR Code - GS1 Digital Link</h2>
               <button className={styles.modalClose} onClick={() => setShowQR(null)}><CloseIcon /></button>
             </div>
             <div className={styles.qrContent}>
@@ -389,12 +373,11 @@ const ProductManagement: React.FC = () => {
   );
 };
 
-// ─── Create Product Modal ──────────────────────────────────
+// --- Create Product Modal ---
 interface CreateProductModalProps {
   onClose: () => void;
   onCreated: () => void;
 }
-
 const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCreated }) => {
   const [form, setForm] = useState({
     product_name: '',
@@ -445,9 +428,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
           <h2 className={styles.modalTitle}>Tambah Produk Baru</h2>
           <button className={styles.modalClose} onClick={onClose}><CloseIcon /></button>
         </div>
-
         {error && <div className={styles.errorBanner}>{error}</div>}
-
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Nama Produk</label>
@@ -460,7 +441,6 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               required
             />
           </div>
-
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>GTIN</label>
             <input
@@ -472,7 +452,6 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               required
             />
           </div>
-
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Kategori</label>
             <select
@@ -492,7 +471,6 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               <option value="lainnya">Lainnya</option>
             </select>
           </div>
-
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Berat</label>
             <input
@@ -503,7 +481,6 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               id="input-weight"
             />
           </div>
-
           <div className={styles.modalActions}>
             <button type="button" className={styles.btnCancel} onClick={onClose}>Batal</button>
             <button type="submit" className={styles.btnSave} disabled={saving} id="btn-save-product">
@@ -516,13 +493,11 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
   );
 };
 
-// ─── Create Instance Modal ─────────────────────────────────
 interface CreateInstanceModalProps {
   gtin: string;
   onClose: () => void;
   onCreated: (result: { gs1Url: string; qrDataUrl: string }) => void;
 }
-
 const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose, onCreated }) => {
   const [type, setType] = useState<'BATCH' | 'UNIQUE'>('UNIQUE');
   const [identifier, setIdentifier] = useState('');
@@ -557,7 +532,6 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
           <h2 className={styles.modalTitle}>Buat Instance Baru</h2>
           <button className={styles.modalClose} onClick={onClose}><CloseIcon /></button>
         </div>
-
         {error && <div className={styles.errorBanner}>{error}</div>}
 
         <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
@@ -584,7 +558,6 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
               </button>
             </div>
           </div>
-
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>
               {type === 'BATCH' ? 'Batch Number' : 'Serial Number'}
