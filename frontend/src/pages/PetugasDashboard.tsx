@@ -148,7 +148,7 @@ const PetugasDashboard: React.FC = () => {
         <section className={styles.progressCard}>
           <div className={styles.progressHeader}>
             <span>Progress ke Reward Berikutnya</span>
-            <strong>{summary.totalPoints} / 1000</strong>
+            <strong>{summary.totalPoints} / {summary.totalPoints + summary.remainingPoints}</strong>
           </div>
 
           <div className={styles.progressTrack} aria-hidden="true">

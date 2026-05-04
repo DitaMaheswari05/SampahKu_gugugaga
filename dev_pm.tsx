@@ -8,8 +8,7 @@ import {
   Product,
   ProductDetail,
 } from '../services/product.service';
-import Header from '../components/Header';
-import styles from '../styles/ProductManagement.module.css';
+import styles from './ProductManagement.module.css';
 
 // ΓöÇΓöÇΓöÇ Status helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const STATUS_LABELS: Record<string, string> = {
@@ -163,7 +162,26 @@ const ProductManagement: React.FC = () => {
   return (
     <div className={styles.pageContainer}>
       {/* Navbar */}
-      <Header />
+      <nav className={styles.navbar}>
+        <div className={styles.navBrand}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+            <line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+          </svg>
+          SampahKu
+        </div>
+        <div className={styles.navLinks}>
+          <a href="/">Dashboard</a>
+          <a href="/products" className={styles.active}>Manajemen Produk</a>
+        </div>
+        <div className={styles.navUser}>
+          <span>Halo, {user?.user_metadata?.name || 'Brand'}</span>
+          <div className={styles.userAvatar}>
+            {(user?.user_metadata?.name || 'B')[0].toUpperCase()}
+          </div>
+        </div>
+      </nav>
 
       {/* Content */}
       <div className={styles.content}>
@@ -464,15 +482,14 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               id="select-category"
             >
               <option value="">Pilih kategori...</option>
-              <option value="Plastik PET">Plastik PET</option>
-              <option value="Plastik PP">Plastik PP</option>
-              <option value="Kertas">Kertas</option>
-              <option value="Kaca">Kaca</option>
-              <option value="Logam">Logam</option>
-              <option value="Organik">Organik</option>
-              <option value="Elektronik">Elektronik</option>
-              <option value="Tekstil">Tekstil</option>
-              <option value="Lainnya">Lainnya</option>
+              <option value="plastik">Plastik</option>
+              <option value="kertas">Kertas</option>
+              <option value="kaca">Kaca</option>
+              <option value="logam">Logam</option>
+              <option value="organik">Organik</option>
+              <option value="elektronik">Elektronik</option>
+              <option value="tekstil">Tekstil</option>
+              <option value="lainnya">Lainnya</option>
             </select>
           </div>
 

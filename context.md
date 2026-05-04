@@ -323,25 +323,25 @@ description   text     -- keterangan human-readable
 created_at    timestamptz
 ```
 
-**Aturan Poin (TBD — belum ditentukan tim)**:
+**Aturan Poin**:
 
 Skema poin belum final. Prinsip yang harus diikuti saat implementasi:
 - Makin jauh perjalanan sampah (mendekati `RECYCLED`), makin besar poin petugas
 - Konsumen mendapat poin lebih kecil dari petugas (karena usaha lebih kecil)
 - `RECYCLED` harus memberikan poin lebih besar dari `DISPOSED` (insentif daur ulang)
-- Implementasi: tentukan nilai konkret sebelum coding `point_history` insert logic
+- Implementasi nilai poin sesuai dengan yang digunakan dalam `backend/src/constants.ts`:
 
-Placeholder struktur per biz_step (nilai angka TBD):
+Struktur poin per biz_step:
 | Aksi | Aktor | Poin |
 |---|---|---|
-| Scan produk (`DISCARDED`) | KONSUMEN | TBD |
-| Pickup gerobak (`PICKED_UP`) | PETUGAS | TBD |
-| Terima di TPS (`AT_TPS`) | PETUGAS | TBD |
-| Sortir sampah (`SORTED`) | PETUGAS | TBD |
-| Muat ke truk (`IN_TRANSIT`) | PETUGAS | TBD |
-| Terima di fasilitas (`AT_FACILITY`) | PETUGAS | TBD |
-| Konfirmasi daur ulang (`RECYCLED`) | PETUGAS | TBD (tertinggi) |
-| Konfirmasi landfill (`DISPOSED`) | PETUGAS | TBD (lebih kecil dari RECYCLED) |
+| Scan produk (`DISCARDED`) | KONSUMEN | 1 |
+| Pickup gerobak (`PICKED_UP`) | PETUGAS | 2 |
+| Terima di TPS (`AT_TPS`) | PETUGAS | 3 |
+| Sortir sampah (`SORTED`) | PETUGAS | 4 |
+| Muat ke truk (`IN_TRANSIT`) | PETUGAS | 2 |
+| Terima di fasilitas (`AT_FACILITY`) | PETUGAS | 5 |
+| Konfirmasi daur ulang (`RECYCLED`) | PETUGAS | 10 (tertinggi) |
+| Konfirmasi landfill (`DISPOSED`) | PETUGAS | 1 (lebih kecil dari RECYCLED) |
 
 #### `user_collections`
 Rekap produk yang pernah dikumpulkan/scan oleh konsumen. **Tabel ini bersifat convenience (bisa berupa View)**.

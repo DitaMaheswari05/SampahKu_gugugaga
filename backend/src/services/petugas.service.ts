@@ -86,9 +86,11 @@ export class PetugasService {
     }
 
     const totalPoints = Number((profile as any).points || 0);
-    const rewardTarget = 1000;
-    const remainingPoints = Math.max(rewardTarget - totalPoints, 0);
-    const progressReward = rewardTarget > 0 ? Math.min((totalPoints / rewardTarget) * 100, 100) : 0;
+    const rewardLevel = Math.floor(totalPoints / 1000);
+    const rewardTarget = (rewardLevel + 1) * 1000;
+    const remainingPoints = rewardTarget - totalPoints;
+    const currentLevelPoints = totalPoints % 1000;
+    const progressReward = (currentLevelPoints / 1000) * 100;
 
     return {
       profile: {

@@ -20,7 +20,7 @@ export const scanInstance = async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await InstancesService.recordScan(id, req.profile.id, biz_step, { location_name, facility_type, coordinates, epcis_body, evidence_url });
+    const result = await InstancesService.recordScan(String(id), String(req.profile.id), String(biz_step), { location_name, facility_type, coordinates, epcis_body, evidence_url });
     return res.status(201).json({ status: 'success', data: result });
   } catch (e: any) {
     console.error(e);
