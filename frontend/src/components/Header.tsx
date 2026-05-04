@@ -44,7 +44,11 @@ const Header: React.FC = () => {
 
   return (
     <header className={styles.header}>
-      <div className={styles.leftSection}>
+      <div 
+        className={styles.leftSection} 
+        onClick={() => navigate('/')} 
+        style={{ cursor: 'pointer' }}
+      >
         <div className={styles.logoBox}>
           <img src="/assets/logo_sampahku.png" alt="SampahKu" />
         </div>
