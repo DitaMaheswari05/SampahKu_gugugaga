@@ -38,7 +38,7 @@
   margin-bottom: 20px;
 }
 
-.logoIcon {
+.logoIcon img {
   width: 32px;
   height: 32px;
   background: linear-gradient(135deg, #91C851 0%, #4C9100 100%);
@@ -48,11 +48,11 @@
   align-items: center;
 }
 
-.logoIcon img {
+/* .logoIcon img {
   width: 18px;
   height: 18px;
   filter: brightness(0) invert(1);
-}
+} */
 
 .logoText {
   font-family: 'Poppins', sans-serif;

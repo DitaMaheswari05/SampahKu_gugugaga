@@ -1,4 +1,3 @@
-// src/components/Header.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMe } from '../services/auth.service';
@@ -74,88 +73,69 @@ const Header: React.FC = () => {
           </span>
         </div>
 
-        <div style={{ position: 'relative' }}>
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)} 
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            aria-label="Menu"
-          >
-            {/* Hamburger Icon */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-main)' }}>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
+        {/* Conditional Rendering berdasarkan Role */}
+        {userRole === 'BRAND' ? (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)} 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              aria-label="Menu"
+            >
+              {/* Hamburger Icon */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-main)' }}>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
 
-          {/* Dropdown Menu */}
-          {isMenuOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '120%',
-              right: 0,
-              backgroundColor: 'var(--surface)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '12px',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-              minWidth: '180px',
-              zIndex: 50,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}>
-              {userRole === 'BRAND' && (
-                <>
-                  <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/dashboard'); }} 
-                    style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
-                  >
-                    Dashboard
-                  </button>
-                  <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/products'); }} 
-                    style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
-                  >
-                    Manajemen Produk
-                  </button>
-                </>
-              )}
-              
-              {userRole === 'PETUGAS' && (
-                <>
-                  <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/dashboard'); }} 
-                    style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
-                  >
-                    Dashboard Petugas
-                  </button>
-                  <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/scan'); }} 
-                    style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
-                  >
-                    Scan Sampah
-                  </button>
-                </>
-              )}
-              
-              {userRole === 'KONSUMEN' && (
+            {/* Dropdown Menu */}
+            {isMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '120%',
+                right: 0,
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                minWidth: '180px',
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
                 <button 
-                  onClick={() => { setIsMenuOpen(false); navigate('/scan'); }} 
+                  onClick={() => { setIsMenuOpen(false); navigate('/dashboard'); }} 
                   style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
                 >
-                  Scan Sampah
+                  Dashboard
                 </button>
-              )}
-              
-              <button 
-                onClick={() => { setIsMenuOpen(false); handleLogoutClick(); }} 
-                style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', color: '#D4183D', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px', fontWeight: '600' }}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); navigate('/products'); }} 
+                  style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
+                >
+                  Manajemen Produk
+                </button>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); handleLogoutClick(); }} 
+                  style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', color: '#D4183D', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px', fontWeight: '600' }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Tampilan Default untuk Konsumen / Petugas */
+          <button className={styles.logoutBtn} onClick={handleLogoutClick} aria-label="Keluar">
+            <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        )}
       </div>
     </header>
   );
