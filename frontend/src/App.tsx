@@ -4,13 +4,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProductManagement from './pages/ProductManagement';
 import PetugasScan from './pages/PetugasScan';
+import PetugasDashboard from './pages/PetugasDashboard';
 import Home from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import DashboardCompany from './pages/Dashboard_Company';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
 import DetailSampah from './pages/DetailSampah';
-import './App.css';
 
 // Komponen Wrapper untuk memproteksi Route berdasarkan status login dan role
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
@@ -20,10 +20,10 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    if (allowedRoles && role && !allowedRoles.includes(role)) {
     // Arahkan ke dashboard masing-masing sesuai role yang valid
     if (role === 'BRAND') return <Navigate to="/brand/dashboard" replace />;
-    if (role === 'PETUGAS') return <Navigate to="/scan" replace />;
+    if (role === 'PETUGAS') return <Navigate to="/petugas/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -65,6 +65,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['PETUGAS']}>
               <PetugasScan />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/petugas/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['PETUGAS']}>
+              <PetugasDashboard />
             </ProtectedRoute>
           } 
         />

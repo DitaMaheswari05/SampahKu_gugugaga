@@ -1,0 +1,343 @@
+.page {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background: linear-gradient(180deg, #edf5e3 0%, #eaf2dc 100%);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  padding: 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.profileCard,
+.progressCard,
+.activitySection {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 12px 28px rgba(84, 102, 54, 0.12);
+}
+
+.profileCard {
+  padding: 22px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profileMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
+  background: #bfbfbf;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.profileText {
+  min-width: 0;
+  flex: 1;
+}
+
+.profileName {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.08;
+  font-weight: 700;
+  color: #152238;
+}
+
+.profileEmail {
+  margin: 6px 0 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #52606d;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #a6d74f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.scanButton {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 16px;
+  background: #5da400;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(93, 164, 0, 0.25);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statCard {
+  background: rgba(248, 251, 241, 0.95);
+  border: 1px solid #b9dd87;
+  border-radius: 16px;
+  padding: 12px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(170, 213, 116, 0.14);
+}
+
+.statHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.statIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.iconOrange {
+  background: #ff9f1c;
+}
+
+.iconBlue {
+  background: #2f7df6;
+}
+
+.iconYellow {
+  background: #f4be00;
+}
+
+.statLabel {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #35511a;
+}
+
+.statValue {
+  margin-top: 10px;
+  font-size: 28px;
+  line-height: 0.95;
+  letter-spacing: -0.8px;
+  font-weight: 800;
+  color: #10172a;
+  position: relative;
+  z-index: 1;
+}
+
+.progressCard {
+  padding: 16px;
+  background: #8dc63f;
+  color: #ffffff;
+}
+
+.progressHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.progressHeader strong {
+  font-size: 12px;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 10px;
+  margin: 10px 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+.progressFill {
+  width: 45%;
+  height: 100%;
+  border-radius: inherit;
+  background: #5f9d17;
+}
+
+.progressNote {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.errorBanner {
+  background: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+}
+
+.activitySection {
+  padding: 22px 16px 18px;
+}
+
+.sectionTitle {
+  margin: 0 0 18px;
+  font-size: 20px;
+  line-height: 1.1;
+  color: #1c2430;
+  font-weight: 700;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activityItem {
+  background: linear-gradient(90deg, rgba(247, 248, 250, 0.96) 0%, rgba(242, 243, 247, 0.92) 100%);
+  border-radius: 16px;
+  padding: 16px 16px 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activityText {
+  min-width: 0;
+  flex: 1;
+}
+
+.activityTitle {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #1d2433;
+}
+
+.activityMeta {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: #7b8290;
+}
+
+.metaDot {
+  color: #b4b9c2;
+}
+
+.pointsBadge {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #ff9f1c;
+  color: #ffffff;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 12px rgba(255, 159, 28, 0.28);
+}
+
+.emptyState {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #475569;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  text-align: center;
+}
+
+.scanButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding-inline: 12px;
+  }
+
+  .profileName {
+    font-size: 21px;
+  }
+
+  .statsGrid {
+    gap: 8px;
+  }
+
+  .statCard {
+    padding: 10px;
+  }
+
+  .statValue {
+    font-size: 26px;
+  }
+
+  .sectionTitle {
+    font-size: 19px;
+  }
+
+  .activityItem {
+    padding: 14px;
+  }
+}

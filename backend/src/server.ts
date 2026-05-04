@@ -4,6 +4,7 @@ import { supabase } from './config/supabase'
 import authRouter from './routes/auth'
 import instancesRouter from './routes/instances'
 import productsRouter from './routes/products'
+import petugasRouter from './routes/petugas'
 import uploadRouter from './routes/upload'
 
 // Resolve DNS issue
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use('/auth', authRouter);
 app.use('/instances', instancesRouter);
 app.use('/products', productsRouter);
+app.use('/petugas', petugasRouter);
 app.use('/upload', uploadRouter);
 
 app.get('/health', (req: Request, res: Response) => {
