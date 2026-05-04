@@ -1,4 +1,3 @@
-// src/pages/ProductManagement.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   getProducts,
@@ -7,116 +6,100 @@ import {
   createInstance,
   getInstanceQR,
   Product,
-  ProductDetail,
 } from '../services/product.service';
 import Header from '../components/Header';
 import styles from '../styles/ProductManagement.module.css';
 
-const STATUS_LABELS: Record<string, string> = {
-  IN_MARKET: 'Di Pasaran',
-  DISCARDED: 'Dibuang',
-  PICKED_UP: 'Diambil',
-  AT_TPS: 'Di TPS',
-  SORTED: 'Disortir',
-  IN_TRANSIT: 'Dalam Perjalanan',
-  AT_FACILITY: 'Di Fasilitas',
-  RECYCLED: 'Didaur Ulang',
-  DISPOSED: 'Di TPA',
-};
-
-function statusBadgeClass(status: string): string {
-  switch (status) {
-    case 'RECYCLED': return styles.badgeGreen;
-    case 'DISPOSED': return styles.badgeRed;
-    case 'IN_MARKET': return styles.badgeGray;
-    default: return styles.badgeOrange;
-  }
-}
-
-function pct(n: number, total: number): string {
-  if (total === 0) return '0%';
-  return Math.round((n / total) * 100) + '%';
-}
-
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
-// --- Icons (inline SVG) ---
 const PlusIcon = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+  <svg
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    viewBox="0 0 24 24"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
 const PackageIcon = () => (
-  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+  <svg
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 24 24"
+  >
+    <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
   </svg>
 );
 
 const CloseIcon = () => (
-  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
-
-const QRIcon = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-    <line x1="14" y1="14" x2="14" y2="17"/><line x1="14" y1="21" x2="21" y2="21"/>
-    <line x1="21" y1="14" x2="21" y2="17"/><line x1="17" y1="14" x2="21" y2="14"/>
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-);
-
-const ChevronUp = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
-    <polyline points="18 15 12 9 6 15"/>
+  <svg
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    viewBox="0 0 24 24"
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
 
 const DownloadIcon = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+  <svg
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    viewBox="0 0 24 24"
+  >
+    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
   </svg>
 );
 
-
-// --- Main Component ---
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Modal states
   const [showCreateProduct, setShowCreateProduct] = useState(false);
-  const [showCreateInstance, setShowCreateInstance] = useState<string | null>(null); // GTIN
+  const [showCreateInstance, setShowCreateInstance] = useState<string | null>(null);
   const [showQR, setShowQR] = useState<{ gs1Url: string; qrDataUrl: string } | null>(null);
-
-  // Expanded row
-  const [expandedGtin, setExpandedGtin] = useState<string | null>(null);
-  const [detailData, setDetailData] = useState<ProductDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  // User info
-  const userRaw = localStorage.getItem('user');
-  const user = userRaw ? JSON.parse(userRaw) : null;
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError('');
+
     try {
       const data = await getProducts();
       setProducts(data);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || 'Gagal memuat produk');
     } finally {
       setLoading(false);
     }
@@ -126,35 +109,38 @@ const ProductManagement: React.FC = () => {
     loadProducts();
   }, [loadProducts]);
 
-  const handleExpand = async (gtin: string) => {
-    if (expandedGtin === gtin) {
-      setExpandedGtin(null);
-      setDetailData(null);
-      return;
-    }
-    setExpandedGtin(gtin);
-    setDetailLoading(true);
-    try {
-      const data = await getProductDetail(gtin);
-      setDetailData(data);
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
   const handleViewQR = async (instanceId: string) => {
     try {
       const data = await getInstanceQR(instanceId);
-      setShowQR({ gs1Url: data.gs1Url, qrDataUrl: data.qrDataUrl });
+      setShowQR({
+        gs1Url: data.gs1Url,
+        qrDataUrl: data.qrDataUrl,
+      });
     } catch (e: any) {
       alert('Gagal generate QR: ' + e.message);
     }
   };
 
+  const handleViewProductQR = async (gtin: string) => {
+    try {
+      const detail = await getProductDetail(gtin);
+
+      if (!detail.instances || detail.instances.length === 0) {
+        alert('Produk ini belum punya QR. Buat instance terlebih dahulu.');
+        setShowCreateInstance(gtin);
+        return;
+      }
+
+      const firstInstance = detail.instances[0];
+      await handleViewQR(firstInstance.id);
+    } catch (e: any) {
+      alert('Gagal membuka QR: ' + e.message);
+    }
+  };
+
   const handleDownloadQR = () => {
     if (!showQR) return;
+
     const link = document.createElement('a');
     link.download = 'qr-sampahku.png';
     link.href = showQR.qrDataUrl;
@@ -163,18 +149,22 @@ const ProductManagement: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      {/* Menggunakan komponen Header re-usable */}
       <Header />
 
-      {/* Content */}
-      <div className={styles.content}>
+      <main className={styles.content}>
         <div className={styles.pageHeader}>
           <div>
             <h1 className={styles.pageTitle}>Manajemen Produk</h1>
-            <p className={styles.pageSubtitle}>Kelola identitas digital produk Anda</p>
+            <p className={styles.pageSubtitle}>Kelola identitas digital produk dan QR code</p>
           </div>
-          <button className={styles.btnPrimary} onClick={() => setShowCreateProduct(true)} id="btn-add-product">
-            <PlusIcon /> Tambah Produk
+
+          <button
+            className={styles.btnPrimary}
+            onClick={() => setShowCreateProduct(true)}
+            id="btn-add-product"
+          >
+            <PlusIcon />
+            Tambah Produk
           </button>
         </div>
 
@@ -188,11 +178,16 @@ const ProductManagement: React.FC = () => {
         ) : products.length === 0 ? (
           <div className={styles.tableWrapper}>
             <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}><PackageIcon /></div>
+              <div className={styles.emptyIcon}>
+                <PackageIcon />
+              </div>
               <h3 className={styles.emptyTitle}>Belum ada produk</h3>
-              <p className={styles.emptyText}>Mulai daftarkan produk pertama Anda untuk pelacakan sampah end-to-end.</p>
+              <p className={styles.emptyText}>
+                Mulai daftarkan produk pertama Anda untuk pelacakan sampah end-to-end.
+              </p>
               <button className={styles.btnPrimary} onClick={() => setShowCreateProduct(true)}>
-                <PlusIcon /> Tambah Produk Pertama
+                <PlusIcon />
+                Tambah Produk Pertama
               </button>
             </div>
           </div>
@@ -202,168 +197,100 @@ const ProductManagement: React.FC = () => {
               <thead>
                 <tr>
                   <th>Nama Produk</th>
+                  <th>GTIN</th>
                   <th>Kategori</th>
-                  <th>Instances</th>
-                  <th>Recovery Rate</th>
-                  <th>Status Breakdown</th>
-                  <th>Dibuat</th>
+                  <th>Berat</th>
+                  <th>Tanggal Dibuat</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
-              <tbody>
-                {products.map((p) => (
-                  <React.Fragment key={p.gtin}>
-                    <tr>
-                      <td>
-                        <div className={styles.productNameCell}>
-                          <div className={styles.productIcon}><PackageIcon /></div>
-                          <div className={styles.productInfo}>
-                            <span className={styles.productName}>{p.product_name}</span>
-                            <span className={styles.productGtin}>{p.gtin}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`${styles.badge} ${styles.badgeBlue}`}>
-                          {p.category || '-'}
-                        </span>
-                      </td>
-                      <td>
-                        <strong>{p.stats.total}</strong>
-                      </td>
-                      <td>
-                        <span className={`${styles.badge} ${p.stats.total > 0 ? styles.badgeGreen : styles.badgeGray}`}>
-                          {pct(p.stats.recycled, p.stats.total)}
-                        </span>
-                      </td>
-                      <td>
-                        {p.stats.total > 0 ? (
-                          <div>
-                            <div className={styles.progressBar}>
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.recycled, p.stats.total), background: '#4caf50' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_progress, p.stats.total), background: '#ff9800' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.disposed, p.stats.total), background: '#f44336' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_market, p.stats.total), background: '#e0e0e0' }} />
-                            </div>
-                            <div className={styles.statsBar} style={{ marginTop: '0.35rem' }}>
-                              <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotGreen}`} />{p.stats.recycled}</div>
-                              <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotOrange}`} />{p.stats.in_progress}</div>
-                              <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotRed}`} />{p.stats.disposed}</div>
-                              <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotGray}`} />{p.stats.in_market}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>-</span>
-                        )}
-                      </td>
-                      <td>{formatDate(p.created_at)}</td>
-                      <td>
-                        <div className={styles.actionsCell}>
-                          <button className={styles.btnLink} onClick={() => setShowCreateInstance(p.gtin)} title="Buat Instance">
-                            <PlusIcon /> Instance
-                          </button>
-                          <button className={styles.btnLink} onClick={() => handleExpand(p.gtin)} title="Detail">
-                            {expandedGtin === p.gtin ? <ChevronUp /> : <ChevronDown />} Detail
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
 
-                    {/* Expanded detail row */}
-                    {expandedGtin === p.gtin && (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={7}>
-                          {detailLoading ? (
-                            <div className={styles.loading}><div className={styles.spinner} />Memuat detail...</div>
-                          ) : detailData ? (
-                            <div className={styles.detailContent}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <strong style={{ fontSize: '0.9rem' }}>
-                                  Instances ({detailData.instances.length})
-                                </strong>
-                                <button className={styles.btnPrimary} style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem' }} onClick={() => setShowCreateInstance(p.gtin)}>
-                                  <PlusIcon /> Tambah Instance
-                                </button>
-                              </div>
-                              {detailData.instances.length > 0 ? (
-                                <div className={styles.instancesGrid}>
-                                  {detailData.instances.map((inst) => (
-                                    <div className={styles.instanceCard} key={inst.id}>
-                                      <span className={styles.instanceType}>{inst.identification_type}</span>
-                                      <strong style={{ fontSize: '0.9rem' }}>
-                                        {inst.identification_type === 'BATCH' ? inst.batch_number : inst.serial_number}
-                                      </strong>
-                                      <span className={styles.instanceId}>{inst.id}</span>
-                                      <div className={styles.instanceBottom}>
-                                        <span className={`${styles.badge} ${statusBadgeClass(inst.current_status)}`}>
-                                          {STATUS_LABELS[inst.current_status] || inst.current_status}
-                                        </span>
-                                        <button className={styles.btnLink} onClick={() => handleViewQR(inst.id)}>
-                                          <QRIcon /> QR
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
-                                  Belum ada instance. Klik "+ Tambah Instance" untuk membuat.
-                                </p>
-                              )}
-                            </div>
-                          ) : null}
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.gtin}>
+                    <td>
+                      <div className={styles.productNameCell}>
+                        <div className={styles.productIcon}>
+                          <PackageIcon />
+                        </div>
+                        <span className={styles.productName}>{product.product_name}</span>
+                      </div>
+                    </td>
+
+                    <td className={styles.gtinCell}>{product.gtin}</td>
+
+                    <td>{product.category || '-'}</td>
+
+                    <td>{product.weight_grams ? `${product.weight_grams}g` : '-'}</td>
+
+                    <td>{formatDate(product.created_at)}</td>
+
+                    <td>
+                      <button
+                        className={styles.qrButton}
+                        onClick={() => handleViewProductQR(product.gtin)}
+                      >
+                        Lihat QR
+                      </button>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* --- Modal: Create Product --- */}
       {showCreateProduct && (
         <CreateProductModal
           onClose={() => setShowCreateProduct(false)}
-          onCreated={() => { setShowCreateProduct(false); loadProducts(); }}
+          onCreated={(createdGtin) => {
+            setShowCreateProduct(false);
+            setShowCreateInstance(createdGtin);
+            loadProducts();
+          }}
         />
       )}
 
-      {/* --- Modal: Create Instance --- */}
       {showCreateInstance && (
         <CreateInstanceModal
           gtin={showCreateInstance}
           onClose={() => setShowCreateInstance(null)}
           onCreated={(result) => {
             setShowCreateInstance(null);
-            setShowQR({ gs1Url: result.gs1Url, qrDataUrl: result.qrDataUrl });
+            setShowQR({
+              gs1Url: result.gs1Url,
+              qrDataUrl: result.qrDataUrl,
+            });
             loadProducts();
-            // Refresh detail if expanded
-            if (expandedGtin === showCreateInstance) {
-              getProductDetail(showCreateInstance).then(setDetailData).catch(console.error);
-            }
           }}
         />
       )}
 
-      {/* --- Modal: QR Display --- */}
       {showQR && (
         <div className={styles.modalOverlay} onClick={() => setShowQR(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>QR Code - GS1 Digital Link</h2>
-              <button className={styles.modalClose} onClick={() => setShowQR(null)}><CloseIcon /></button>
+              <button className={styles.modalClose} onClick={() => setShowQR(null)}>
+                <CloseIcon />
+              </button>
             </div>
+
             <div className={styles.qrContent}>
               <img src={showQR.qrDataUrl} alt="QR Code" className={styles.qrImage} />
+
               <div className={styles.qrUrl}>{showQR.gs1Url}</div>
+
               <div className={styles.qrActions}>
                 <button className={styles.btnPrimary} onClick={handleDownloadQR}>
-                  <DownloadIcon /> Download QR
+                  <DownloadIcon />
+                  Download QR
                 </button>
-                <button className={styles.btnCancel} onClick={() => setShowQR(null)}>Tutup</button>
+
+                <button className={styles.btnCancel} onClick={() => setShowQR(null)}>
+                  Tutup
+                </button>
               </div>
             </div>
           </div>
@@ -373,11 +300,11 @@ const ProductManagement: React.FC = () => {
   );
 };
 
-// --- Create Product Modal ---
 interface CreateProductModalProps {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (gtin: string) => void;
 }
+
 const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCreated }) => {
   const [form, setForm] = useState({
     product_name: '',
@@ -385,21 +312,28 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
     category: '',
     weight_grams: '',
   });
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form.product_name || !form.gtin) {
       setError('Nama Produk dan GTIN wajib diisi');
       return;
     }
+
     setSaving(true);
     setError('');
+
     try {
       await createProduct({
         product_name: form.product_name,
@@ -413,9 +347,10 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
           recyclingInstructions: '',
         },
       });
-      onCreated();
+
+      onCreated(form.gtin);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || 'Gagal menyimpan produk');
     } finally {
       setSaving(false);
     }
@@ -426,9 +361,13 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>Tambah Produk Baru</h2>
-          <button className={styles.modalClose} onClick={onClose}><CloseIcon /></button>
+          <button className={styles.modalClose} onClick={onClose}>
+            <CloseIcon />
+          </button>
         </div>
+
         {error && <div className={styles.errorBanner}>{error}</div>}
+
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Nama Produk</label>
@@ -441,6 +380,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               required
             />
           </div>
+
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>GTIN</label>
             <input
@@ -452,6 +392,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               required
             />
           </div>
+
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Kategori</label>
             <select
@@ -461,16 +402,18 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               id="select-category"
             >
               <option value="">Pilih kategori...</option>
-              <option value="plastik">Plastik</option>
-              <option value="kertas">Kertas</option>
-              <option value="kaca">Kaca</option>
-              <option value="logam">Logam</option>
-              <option value="organik">Organik</option>
-              <option value="elektronik">Elektronik</option>
-              <option value="tekstil">Tekstil</option>
-              <option value="lainnya">Lainnya</option>
+              <option value="Plastik PET">Plastik PET</option>
+              <option value="Plastik PP">Plastik PP</option>
+              <option value="Kertas">Kertas</option>
+              <option value="Kaca">Kaca</option>
+              <option value="Logam">Logam</option>
+              <option value="Organik">Organik</option>
+              <option value="Elektronik">Elektronik</option>
+              <option value="Tekstil">Tekstil</option>
+              <option value="Lainnya">Lainnya</option>
             </select>
           </div>
+
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Berat</label>
             <input
@@ -481,8 +424,12 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
               id="input-weight"
             />
           </div>
+
           <div className={styles.modalActions}>
-            <button type="button" className={styles.btnCancel} onClick={onClose}>Batal</button>
+            <button type="button" className={styles.btnCancel} onClick={onClose}>
+              Batal
+            </button>
+
             <button type="submit" className={styles.btnSave} disabled={saving} id="btn-save-product">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </button>
@@ -498,7 +445,12 @@ interface CreateInstanceModalProps {
   onClose: () => void;
   onCreated: (result: { gs1Url: string; qrDataUrl: string }) => void;
 }
-const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose, onCreated }) => {
+
+const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({
+  gtin,
+  onClose,
+  onCreated,
+}) => {
   const [type, setType] = useState<'BATCH' | 'UNIQUE'>('UNIQUE');
   const [identifier, setIdentifier] = useState('');
   const [saving, setSaving] = useState(false);
@@ -506,20 +458,27 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!identifier) {
       setError(type === 'BATCH' ? 'Batch Number wajib diisi' : 'Serial Number wajib diisi');
       return;
     }
+
     setSaving(true);
     setError('');
+
     try {
       const result = await createInstance(gtin, {
         identification_type: type,
         ...(type === 'BATCH' ? { batch_number: identifier } : { serial_number: identifier }),
       });
-      onCreated({ gs1Url: result.gs1Url, qrDataUrl: result.qrDataUrl });
+
+      onCreated({
+        gs1Url: result.gs1Url,
+        qrDataUrl: result.qrDataUrl,
+      });
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || 'Gagal membuat instance');
     } finally {
       setSaving(false);
     }
@@ -530,38 +489,52 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
           <h2 className={styles.modalTitle}>Buat Instance Baru</h2>
-          <button className={styles.modalClose} onClick={onClose}><CloseIcon /></button>
+          <button className={styles.modalClose} onClick={onClose}>
+            <CloseIcon />
+          </button>
         </div>
+
         {error && <div className={styles.errorBanner}>{error}</div>}
 
-        <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
-          GTIN: <code style={{ background: '#f3f4f6', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{gtin}</code>
+        <div className={styles.gtinPreview}>
+          GTIN:
+          <code>{gtin}</code>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Tipe Identifikasi</label>
+
             <div className={styles.toggleGroup}>
               <button
                 type="button"
                 className={`${styles.toggleBtn} ${type === 'UNIQUE' ? styles.toggleBtnActive : ''}`}
-                onClick={() => { setType('UNIQUE'); setIdentifier(''); }}
+                onClick={() => {
+                  setType('UNIQUE');
+                  setIdentifier('');
+                }}
               >
-                Serial (UNIQUE)
+                Serial
               </button>
+
               <button
                 type="button"
                 className={`${styles.toggleBtn} ${type === 'BATCH' ? styles.toggleBtnActive : ''}`}
-                onClick={() => { setType('BATCH'); setIdentifier(''); }}
+                onClick={() => {
+                  setType('BATCH');
+                  setIdentifier('');
+                }}
               >
-                Batch (BATCH)
+                Batch
               </button>
             </div>
           </div>
+
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>
               {type === 'BATCH' ? 'Batch Number' : 'Serial Number'}
             </label>
+
             <input
               className={styles.formInput}
               placeholder={type === 'BATCH' ? 'Contoh: BATCH-2026-001' : 'Contoh: SN-001'}
@@ -572,18 +545,20 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
             />
           </div>
 
-          <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '0.75rem', fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
-            <strong>GS1 Digital Link Preview:</strong><br />
+          <div className={styles.gs1Preview}>
+            <strong>GS1 Digital Link Preview:</strong>
             <code>
               {type === 'UNIQUE'
                 ? `https://sampahku.id/01/${gtin}/21/${identifier || '...'}`
-                : `https://sampahku.id/01/${gtin}/10/${identifier || '...'}`
-              }
+                : `https://sampahku.id/01/${gtin}/10/${identifier || '...'}`}
             </code>
           </div>
 
           <div className={styles.modalActions}>
-            <button type="button" className={styles.btnCancel} onClick={onClose}>Batal</button>
+            <button type="button" className={styles.btnCancel} onClick={onClose}>
+              Batal
+            </button>
+
             <button type="submit" className={styles.btnSave} disabled={saving} id="btn-save-instance">
               {saving ? 'Membuat...' : 'Buat & Generate QR'}
             </button>

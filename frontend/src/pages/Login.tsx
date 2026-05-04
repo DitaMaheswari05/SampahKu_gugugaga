@@ -27,7 +27,7 @@ const Login: React.FC = () => {
           if (profileData.data && profileData.data.role) {
             const userRole = profileData.data.role;
             localStorage.setItem('role', userRole);
-            if (userRole === 'BRAND') navigate('/products');
+            if (userRole === 'BRAND') navigate('/brand/dashboard');
             else if (userRole === 'PETUGAS') navigate('/scan');
             else navigate('/dashboard');
           } else {
@@ -42,7 +42,7 @@ const Login: React.FC = () => {
 
     if (localStorage.getItem('token')) {
       const storedRole = localStorage.getItem('role');
-      if (storedRole === 'BRAND') navigate('/products');
+      if (storedRole === 'BRAND') navigate('/brand/dashboard');
       else if (storedRole === 'PETUGAS') navigate('/scan');
       else navigate('/dashboard');
     }
@@ -70,7 +70,7 @@ const Login: React.FC = () => {
             setShowToast(true);
             setTimeout(() => {
               setShowToast(false);
-              if (role === 'BRAND') navigate('/products');
+              if (role === 'BRAND') navigate('/brand/dashboard');
               else if (role === 'PETUGAS') navigate('/scan');
               else navigate('/dashboard');
             }, 1500);

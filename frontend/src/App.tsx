@@ -6,6 +6,7 @@ import ProductManagement from './pages/ProductManagement';
 import PetugasScan from './pages/PetugasScan';
 import Home from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
+import DashboardCompany from './pages/Dashboard_Company';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
 import DetailSampah from './pages/DetailSampah';
@@ -21,7 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
   }
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     // Arahkan ke dashboard masing-masing sesuai role yang valid
-    if (role === 'BRAND') return <Navigate to="/products" replace />;
+    if (role === 'BRAND') return <Navigate to="/brand/dashboard" replace />;
     if (role === 'PETUGAS') return <Navigate to="/scan" replace />;
     return <Navigate to="/dashboard" replace />;
   }
@@ -40,6 +41,15 @@ function App() {
         <Route path="/" element={<Home />} />
 
         {/* Protected Routes - Role: BRAND */}
+        <Route 
+          path="/brand/dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['BRAND']}>
+              <DashboardCompany />
+            </ProtectedRoute>
+          } 
+        />
+
         <Route 
           path="/products" 
           element={
