@@ -1,3 +1,4 @@
+// src/components/Header.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMe } from '../services/auth.service';
@@ -7,12 +8,20 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   // State untuk menyimpan nama pengguna yang ditarik dari database
   const [userName, setUserName] = useState<string>('Memuat...');
+  const [userRole, setUserRole] = useState<string | null>(null); // Tambahkan state untuk role
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false); // State untuk toggle dropdown hamburger
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         // Cek data lokal sebagai nilai awal yang cepat
         const userStr = localStorage.getItem('user');
+        const roleStr = localStorage.getItem('role');
+        
+        if (roleStr) {
+          setUserRole(roleStr);
+        }
+
         if (userStr) {
           const user = JSON.parse(userStr);
           if (user?.user_metadata?.name) {
@@ -21,19 +30,22 @@ const Header: React.FC = () => {
             setUserName(user.name);
           }
         }
-
+        
         const response = await getMe();
         if (response.data) {
           // Gunakan name dari tabel profiles (prioritas utama), fallback ke metadata auth
           const name = response.data.name || response.data.user_metadata?.name || 'Pengguna';
           setUserName(name);
+          
+          if (response.data.role) {
+             setUserRole(response.data.role);
+          }
         }
       } catch (error) {
         console.error('Gagal mengambil data pengguna dari database:', error);
         setUserName('Pengguna');
       }
     };
-
     fetchUserData();
   }, []);
 
@@ -56,25 +68,75 @@ const Header: React.FC = () => {
       </div>
       
       <div className={styles.rightSection}>
-        <div className={styles.notification}>
-          <svg className={styles.bellIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-          </svg>
-          <span className={styles.badge}>3</span>
-        </div>
         <div className={styles.userInfo}>
           <span className={styles.greetingText}>
             Halo, <span className={styles.userName}>{userName}</span>
           </span>
         </div>
-        <button className={styles.logoutBtn} onClick={handleLogoutClick} aria-label="Keluar">
-          <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
-        </button>
+
+        {/* Conditional Rendering berdasarkan Role */}
+        {userRole === 'BRAND' ? (
+          <div style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setIsMenuOpen(!isMenuOpen)} 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              aria-label="Menu"
+            >
+              {/* Hamburger Icon */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-main)' }}>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '120%',
+                right: 0,
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                minWidth: '180px',
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); navigate('/dashboard'); }} 
+                  style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); navigate('/products'); }} 
+                  style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}
+                >
+                  Manajemen Produk
+                </button>
+                <button 
+                  onClick={() => { setIsMenuOpen(false); handleLogoutClick(); }} 
+                  style={{ padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none', color: '#D4183D', cursor: 'pointer', fontFamily: "'Poppins', sans-serif", fontSize: '13px', fontWeight: '600' }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Tampilan Default untuk Konsumen / Petugas */
+          <button className={styles.logoutBtn} onClick={handleLogoutClick} aria-label="Keluar">
+            <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
+        )}
       </div>
     </header>
   );
