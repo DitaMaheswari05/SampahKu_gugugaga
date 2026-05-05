@@ -48,3 +48,27 @@ app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
+
+// buat deploy
+app.get('/test-supabase', async (req: Request, res: Response) => {
+  const { data, error } = await supabase.from('hackathon_test').select('*');
+  if(error) return res.status(500).json(error);
+  return res.json(data);
+});
+
+// Global error handler
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
+  console.error(err);
+  res.status(err.status || 500).json({
+    status: 'error',
+    message: err.message || 'Internal Server Error'
+  });
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;
