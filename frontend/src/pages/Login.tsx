@@ -119,13 +119,10 @@ const Login: React.FC = () => {
 
         <div className={styles.tabs}>
           <div className={`${styles.tab} ${role === 'KONSUMEN' ? styles.tabActive : ''}`} onClick={() => setRole('KONSUMEN')}>
-            Konsumen
           </div>
           <div className={`${styles.tab} ${role === 'PETUGAS' ? styles.tabActive : ''}`} onClick={() => setRole('PETUGAS')}>
-            Petugas
           </div>
           <div className={`${styles.tab} ${role === 'BRAND' ? styles.tabActive : ''}`} onClick={() => setRole('BRAND')}>
-            Produsen
           </div>
         </div>
 

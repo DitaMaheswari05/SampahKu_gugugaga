@@ -84,7 +84,7 @@
 }
 
 /* Role Tabs */
-.tabs {
+/* .tabs {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -112,7 +112,7 @@
 .tabActive {
   background: #EDF4E6;
   font-weight: 600;
-}
+} */
 
 /* Form & Inputs */
 .form {
