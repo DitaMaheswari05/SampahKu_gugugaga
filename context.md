@@ -169,7 +169,7 @@ auth.users (Supabase built-in)
               │
               ├──► products (brand_id FK → profiles.id) [role: BRAND]
               │         │
-              │         └──► product_instances (gtin FK → products.gtin)
+              │         └──► product_instances (product_id FK → products.id)
               │                     │
               │                     ├──► activities (instance_id FK)
               │                     │         │
@@ -198,7 +198,8 @@ created_at   timestamptz
 #### `products`
 Katalog produk yang didaftarkan oleh BRAND.
 ```sql
-gtin             varchar PK   -- Global Trade Item Number (standar GS1)
+id               uuid PK      -- ID produk internal
+gtin             varchar      -- Global Trade Item Number (standar GS1)
 brand_id         uuid FK → profiles.id
 product_name     text NOT NULL
 material_passport jsonb NOT NULL  -- JSON-LD: komposisi material, recycling info, DPP data
@@ -225,7 +226,7 @@ created_at       timestamptz
 Representasi fisik dari sebuah produk (satu unit atau satu batch).
 ```sql
 id                  uuid PK
-gtin                varchar FK → products.gtin
+product_id          uuid FK → products.id
 identification_type text CHECK IN ('BATCH', 'UNIQUE')
   -- BATCH: satu QR untuk satu batch produksi (banyak unit)
   -- UNIQUE: satu QR per unit fisik
