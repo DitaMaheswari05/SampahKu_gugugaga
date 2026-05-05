@@ -169,7 +169,7 @@ auth.users (Supabase built-in)
               │
               ├──► products (brand_id FK → profiles.id) [role: BRAND]
               │         │
-              │         └──► product_instances (gtin FK → products.gtin)
+              │         └──► product_instances (product_id FK → products.id)
               │                     │
               │                     ├──► activities (instance_id FK)
               │                     │         │
@@ -198,7 +198,8 @@ created_at   timestamptz
 #### `products`
 Katalog produk yang didaftarkan oleh BRAND.
 ```sql
-gtin             varchar PK   -- Global Trade Item Number (standar GS1)
+id               uuid PK      -- ID produk internal
+gtin             varchar      -- Global Trade Item Number (standar GS1)
 brand_id         uuid FK → profiles.id
 product_name     text NOT NULL
 material_passport jsonb NOT NULL  -- JSON-LD: komposisi material, recycling info, DPP data
@@ -225,7 +226,7 @@ created_at       timestamptz
 Representasi fisik dari sebuah produk (satu unit atau satu batch).
 ```sql
 id                  uuid PK
-gtin                varchar FK → products.gtin
+product_id          uuid FK → products.id
 identification_type text CHECK IN ('BATCH', 'UNIQUE')
   -- BATCH: satu QR untuk satu batch produksi (banyak unit)
   -- UNIQUE: satu QR per unit fisik
@@ -654,7 +655,7 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 12. **Sistem poin TBD** — jangan hardcode angka poin di kode sebelum tim menentukannya. Gunakan konstanta/config yang mudah diubah. Backend menyediakan `POINTS` config sebagai placeholder.
 13. Alur nyata Indonesia: **Gerobak RT → TPS → Truk DLH → Bank Sampah/TPA** — setiap perpindahan adalah 1 scan point petugas.
 14. **`biz_step: 'discarding'`** digunakan oleh KONSUMEN, sedangkan `biz_step: 'disposing'` digunakan oleh PETUGAS (untuk landfill akhir). Jangan sampai tertukar.
-15. **Explicit profiles insert** — backend menggunakan `admin.createUser()` (bypass DB trigger) lalu `profiles.upsert()` secara eksplisit. **JANGAN** buat DB trigger `on_auth_user_created` — sudah dihapus karena menyebabkan error.
+15. **Explicit profiles insert** — backend menggunakan `admin.createUser()` (bypass DB trigger) lalu `profiles.upsert()` secara eksplisit. **JANGAN** buat DB trigger `on_auth_user_created` — sudah dihapus karena menyebabkan error. **JANGAN** pernah INSERT langsung ke `auth.users` via raw SQL — Supabase GoTrue membutuhkan `instance_id` dan metadata internal yang hanya di-set benar oleh Admin API. Seeding user harus selalu via `admin.createUser()` (lihat `backend/fix_users.ts`).
 16. **Enumerasi role** — gunakan enum/konstanta `['KONSUMEN','PETUGAS','BRAND']` di backend untuk validasi input.
 17. **Server-side checks** — semua endpoint yang mengubah `product_instances.current_status` harus melakukan validasi role sebelum update (mis. hanya `PETUGAS` yang boleh menandai `RECYCLED`).
 18. **Auth controller error handling** — semua controller methods HARUS di-wrap dalam `try/catch` dan return proper JSON error response. Jangan biarkan error propagate unhandled.
@@ -669,7 +670,9 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 27. **`/users/me/collections` Logic**: Query join `activities` → `product_instances` → `products`. Filter `biz_step = 'discarding'` dan `actor_id = konsumen.id`. Hasilnya di-flatten ke struktur flat untuk kemudahan konsumsi frontend. Sorted by `timestamp DESC`.
 28. **`/instances/:id/activities` Logic**: Return dua objek: `instance` (data product_instances + join products + join profiles brand) dan `activities` (semua rows activities untuk instance tersebut, join profiles actor, sorted ASC untuk tampil kronologis).
 29. **Frontend Constants Pattern**: Saat membuat fitur baru yang menggunakan nilai role, SELALU import dari `constants/roles.ts`. Saat membutuhkan navigasi berdasarkan role, SELALU gunakan `getHomeRouteByRole()` dari `constants/routes.ts`. Jangan pernah hardcode string role atau path redirect di komponen.
+30. **Auth Seeding**: **JANGAN** seed user via raw SQL `INSERT INTO auth.users` — ini menghasilkan record dengan `instance_id = NULL` yang tidak terlihat oleh GoTrue dan menyebabkan error `Database error checking email`. SELALU gunakan `supabase.auth.admin.createUser()` dari script TypeScript (lihat `backend/fix_users.ts`). Untuk cleanup data seeder, hapus dalam urutan FK yang benar: `point_history` → `user_collections` → `activities` → `product_instances` → `products` → `auth.identities` → `profiles` → `auth.users`.
+31. **Product Instances Relation**: `product_instances` menggunakan `product_id` sebagai *foreign key* ke `products`. Karena frontend banyak membutuhkan nilai `gtin`, backend (services) HARUS selalu men-*join* tabel `products` (contoh: `.select('*, products!inner(gtin)')`) dan memetakan nilai `gtin` tersebut kembali ke level *root* object (misal: `gtin: row.products.gtin`) sebelum dikirim ke frontend.
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-05 (Refactor frontend architecture — constants/config centralization + Implementasi Circular Wallet backend+frontend).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-05 (Refactor product_instances FK dari gtin ke product_id + Fix auth seeding via Admin API + Fix konsumen.service.ts gtin queries).*

@@ -7,6 +7,7 @@ import {
   getInstanceQR,
   Product,
   ProductDetail,
+  ProductInstance,
 } from '../services/product.service';
 import Header from '../components/Header';
 import styles from '../styles/ProductManagement.module.css';
@@ -15,13 +16,25 @@ import styles from '../styles/ProductManagement.module.css';
 const STATUS_LABELS: Record<string, string> = {
   IN_MARKET: 'Di Pasaran',
   DISCARDED: 'Dibuang',
-  PICKED_UP: 'Diambil',
+  PICKED_UP: 'Diambil Petugas',
   AT_TPS: 'Di TPS',
   SORTED: 'Disortir',
   IN_TRANSIT: 'Dalam Perjalanan',
   AT_FACILITY: 'Di Fasilitas',
   RECYCLED: 'Didaur Ulang',
   DISPOSED: 'Di TPA',
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  IN_MARKET: '#6b7280',
+  DISCARDED: '#f59e0b',
+  PICKED_UP: '#3b82f6',
+  AT_TPS: '#8b5cf6',
+  SORTED: '#06b6d4',
+  IN_TRANSIT: '#f97316',
+  AT_FACILITY: '#10b981',
+  RECYCLED: '#16a34a',
+  DISPOSED: '#ef4444',
 };
 
 function statusBadgeClass(status: string): string {
@@ -40,6 +53,97 @@ function pct(n: number, total: number): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/**
+ * Renders instance cards for the expanded product detail.
+ * - UNIQUE instances → one card per instance (single status badge)
+ * - BATCH instances  → grouped by batch_number → one card per batch group
+ *   with per-status breakdown chips and total item count
+ */
+function renderInstanceCards(
+  instances: ProductInstance[],
+  onViewQR: (id: string) => void
+): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+
+  const uniqueInsts = instances.filter(i => i.identification_type === 'UNIQUE');
+  const batchInsts  = instances.filter(i => i.identification_type === 'BATCH');
+
+  // ── UNIQUE: one card per instance ─────────────────────────────────────
+  uniqueInsts.forEach(inst => {
+    nodes.push(
+      <div className={styles.instanceCard} key={inst.id}>
+        <span className={styles.instanceType}>SERIAL</span>
+        <strong style={{ fontSize: '0.9rem' }}>{inst.serial_number || '—'}</strong>
+        <span className={styles.instanceId}>{inst.id}</span>
+        <div className={styles.instanceBottom}>
+          <span className={`${styles.badge} ${statusBadgeClass(inst.current_status)}`}>
+            {STATUS_LABELS[inst.current_status] || inst.current_status}
+          </span>
+          <button className={styles.btnLink} onClick={() => onViewQR(inst.id)}>
+            <QRIcon /> QR
+          </button>
+        </div>
+      </div>
+    );
+  });
+
+  // ── BATCH: group by batch_number, show one card per group ───────────────
+  const batchGroups: Record<string, ProductInstance[]> = {};
+  batchInsts.forEach(inst => {
+    const key = inst.batch_number || inst.id;
+    if (!batchGroups[key]) batchGroups[key] = [];
+    batchGroups[key].push(inst);
+  });
+
+  Object.entries(batchGroups).forEach(([batchNumber, group]) => {
+    const total = group.length;
+    const statusCounts: Record<string, number> = {};
+    group.forEach(inst => {
+      statusCounts[inst.current_status] = (statusCounts[inst.current_status] || 0) + 1;
+    });
+    const primaryId = group[0].id; // all items in a batch share the same QR URL
+
+    nodes.push(
+      <div className={styles.instanceCard} key={`batch-${batchNumber}`}>
+        <span className={styles.instanceType}>BATCH</span>
+        <strong style={{ fontSize: '0.9rem' }}>{batchNumber}</strong>
+        <span className={styles.instanceId}>{total} item fisik</span>
+
+        {/* Multi-status breakdown */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.5rem' }}>
+          {Object.entries(statusCounts)
+            .sort(([, a], [, b]) => b - a)
+            .map(([status, count]) => {
+              const color = STATUS_COLOR[status] || '#6b7280';
+              return (
+                <span
+                  key={status}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                    background: color + '18', border: `1px solid ${color}40`,
+                    borderRadius: '999px', padding: '0.15rem 0.55rem',
+                    fontSize: '0.7rem', fontWeight: 600, color,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  {STATUS_LABELS[status] || status}: {count}
+                </span>
+              );
+            })}
+        </div>
+
+        <div className={styles.instanceBottom} style={{ marginTop: '0.5rem' }}>
+          <button className={styles.btnLink} onClick={() => onViewQR(primaryId)}>
+            <QRIcon /> QR
+          </button>
+        </div>
+      </div>
+    );
+  });
+
+  return nodes;
 }
 
 // ΓöÇΓöÇΓöÇ Icons (inline SVG) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -289,23 +393,7 @@ const ProductManagement: React.FC = () => {
                               </div>
                               {detailData.instances.length > 0 ? (
                                 <div className={styles.instancesGrid}>
-                                  {detailData.instances.map((inst) => (
-                                    <div className={styles.instanceCard} key={inst.id}>
-                                      <span className={styles.instanceType}>{inst.identification_type}</span>
-                                      <strong style={{ fontSize: '0.9rem' }}>
-                                        {inst.identification_type === 'BATCH' ? inst.batch_number : inst.serial_number}
-                                      </strong>
-                                      <span className={styles.instanceId}>{inst.id}</span>
-                                      <div className={styles.instanceBottom}>
-                                        <span className={`${styles.badge} ${statusBadgeClass(inst.current_status)}`}>
-                                          {STATUS_LABELS[inst.current_status] || inst.current_status}
-                                        </span>
-                                        <button className={styles.btnLink} onClick={() => handleViewQR(inst.id)}>
-                                          <QRIcon /> QR
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                  {renderInstanceCards(detailData.instances, handleViewQR)}
                                 </div>
                               ) : (
                                 <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>
@@ -513,6 +601,7 @@ interface CreateInstanceModalProps {
 const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose, onCreated }) => {
   const [type, setType] = useState<'BATCH' | 'UNIQUE'>('UNIQUE');
   const [identifier, setIdentifier] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -522,12 +611,20 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
       setError(type === 'BATCH' ? 'Batch Number wajib diisi' : 'Serial Number wajib diisi');
       return;
     }
+    const qty = parseInt(quantity, 10);
+    if (type === 'BATCH' && (isNaN(qty) || qty < 1)) {
+      setError('Jumlah item harus minimal 1');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const result = await createInstance(gtin, {
         identification_type: type,
-        ...(type === 'BATCH' ? { batch_number: identifier } : { serial_number: identifier }),
+        ...(type === 'BATCH'
+          ? { batch_number: identifier, quantity: qty }
+          : { serial_number: identifier }
+        ),
       });
       onCreated({ gs1Url: result.gs1Url, qrDataUrl: result.qrDataUrl });
     } catch (e: any) {
@@ -585,6 +682,25 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
               required
             />
           </div>
+
+          {type === 'BATCH' && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Jumlah Item Fisik</label>
+              <input
+                className={styles.formInput}
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="Contoh: 100"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value.replace(/\D/g, '') || '1')}
+                id="input-quantity"
+              />
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+                Satu QR Batch mewakili <strong>{parseInt(quantity) || 1} item fisik</strong>. Setiap item dapat dipindai secara terpisah oleh konsumen.
+              </p>
+            </div>
+          )}
 
           <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '0.75rem', fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem' }}>
             <strong>GS1 Digital Link Preview:</strong><br />
