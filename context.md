@@ -100,40 +100,61 @@ SampahKu_gugugaga/
 │       │   └── supabase.ts ← Singleton Supabase client (Service Role)
 │       ├── constants.ts    ← ROLES enum, POINTS config
 │       ├── controllers/
-│       │   ├── auth.controller.ts     ← Register, login, getMe (dengan try/catch)
-│       │   ├── instances.controller.ts ← Scan instance (biz_step tracking)
-│       │   └── product.controller.ts  ← CRUD produk & instances, QR (BRAND only) ✅
+│       │   ├── auth.controller.ts       ← Register, login, getMe (dengan try/catch)
+│       │   ├── instances.controller.ts  ← Scan instance (biz_step tracking)
+│       │   ├── konsumen.controller.ts   ← getMyCollections, getInstanceActivities ✅
+│       │   └── product.controller.ts   ← CRUD produk & instances, QR (BRAND only) ✅
 │       ├── routes/
 │       │   ├── auth.ts
-│       │   ├── instances.ts
-│       │   └── products.ts  ← /products/* endpoints ✅
+│       │   ├── instances.ts    ← POST /:id/scan, GET /:id/activities ✅
+│       │   ├── products.ts     ← /products/* endpoints ✅
+│       │   └── users.ts        ← GET /users/me/collections ✅
 │       ├── services/
 │       │   ├── auth.service.ts      ← Register & Login via Ephemeral Client + profiles upsert ✅
-│       │   ├── instances.service.ts  ← recordScan (hash SHA-256 + activity + points) ✅
+│       │   ├── instances.service.ts ← recordScan (hash SHA-256 + activity + points) ✅
+│       │   ├── konsumen.service.ts  ← getMyCollections, getInstanceActivities ✅
 │       │   ├── points.service.ts
-│       │   └── product.service.ts   ← createProduct, createInstance+QR, getProducts+stats ✅
+│       │   └── product.service.ts  ← createProduct, createInstance+QR, getProducts+stats ✅
 │       ├── middlewares/
-│       │   └── auth.middleware.ts    ← protect (JWT verify + profile fetch w/ user_metadata fallback) ✅
+│       │   └── auth.middleware.ts   ← protect (JWT verify + profile fetch w/ user_metadata fallback) ✅
 │       └── types/
 │           └── express.d.ts         ← req.user, req.profile type extensions
 └── frontend/
     ├── package.json
     ├── tsconfig.json
     └── src/
-        ├── App.tsx         ← Root component, setup routing (/login, /register, /products)
+        ├── App.tsx         ← Root component, routing dengan ProtectedRoute (OCP-compliant) ✅
+        ├── config.ts       ← Centralized API_URL (gunakan REACT_APP_API_URL env var) ✅
         ├── index.tsx       ← ReactDOM render
         ├── index.css       ← Global styles (CSS variables: --primary, --secondary, dll)
-        ├── components/     ← Komponen UI reusable (Button, Navbar, Card, dll)
+        ├── components/
+        │   └── Header.tsx  ← Navbar universal (hamburger menu per role) ✅
+        ├── constants/
+        │   ├── roles.ts    ← ROLES const + UserRole type ✅
+        │   └── routes.ts   ← ROLE_HOME_ROUTES + getHomeRouteByRole() ✅
         ├── pages/
-        │   ├── Login.tsx + Login.module.css
-        │   ├── Register.tsx + Register.module.css
-        │   └── ProductManagement.tsx + ProductManagement.module.css ← Brand dashboard ✅
-        ├── hooks/          ← Custom React hooks (useAuth, useFetch, dll)
+        │   ├── Login.tsx               ← Login form (tabs role visual-only) ✅
+        │   ├── Register.tsx            ← Register form (pilih role: KONSUMEN/PETUGAS/BRAND) ✅
+        │   ├── Dashboard.tsx           ← Dashboard KONSUMEN (Circular Wallet) ✅
+        │   ├── KonsumenScan.tsx        ← Scan QR & konfirmasi buang sampah ✅
+        │   ├── DetailSampah.tsx        ← Timeline perjalanan sampah real-time ✅
+        │   ├── PetugasScan.tsx         ← Scan & update status (PETUGAS) ✅
+        │   ├── PetugasDashboard.tsx    ← Dashboard PETUGAS ✅
+        │   ├── ProductManagement.tsx   ← CRUD produk & QR (BRAND) ✅
+        │   ├── Dashboard_Company.tsx   ← Dashboard BRAND ✅
+        │   ├── Homepage.tsx            ← Landing page ✅
+        │   └── Logout.tsx              ← Konfirmasi logout ✅
+        ├── hooks/          ← Custom React hooks (useAuth, dll) — belum diimplementasi
         ├── services/
-        │   ├── auth.service.ts    ← login(), register() API calls
-        │   └── product.service.ts ← getProducts(), createProduct(), createInstance(), getInstanceQR() ✅
-        ├── styles/         ← CSS files per komponen atau global
-        └── utils/          ← Helper functions (format tanggal, string, dll)
+        │   ├── auth.service.ts     ← login(), register(), logout(), getMe() ✅
+        │   ├── konsumen.service.ts ← getMyCollections(), getInstanceActivities(),
+        │   │                          discardInstance(), resolveGS1Link() ✅
+        │   ├── petugas.service.ts  ← getPetugasDashboard(), resolveGS1Link(),
+        │   │                          uploadEvidence(), scanInstance() ✅
+        │   └── product.service.ts  ← getProducts(), createProduct(), createInstance(),
+        │                              getInstanceQR(), getProductDetail() ✅
+        ├── styles/         ← CSS Modules per halaman/komponen
+        └── utils/          ← Helper functions — belum diimplementasi
 ```
 
 ---
@@ -490,9 +511,11 @@ Ketika QR di-scan, sistem resolve URL → lookup `product_instances` berdasarkan
 ### Frontend (React / TypeScript)
 - **Pattern**: `pages/` menggunakan komponen dari `components/`, memanggil `services/`, menggunakan `hooks/`
 - Semua API calls **harus** melalui `services/` (jangan fetch langsung di komponen/halaman)
+- **Constants**: gunakan `src/constants/roles.ts` (`ROLES`, `UserRole`) dan `src/constants/routes.ts` (`getHomeRouteByRole()`) — **jangan hardcode** string role seperti `'KONSUMEN'`, `'PETUGAS'`, `'BRAND'` atau path redirect di komponen
+- **Config**: URL API diambil dari `src/config.ts` (`API_URL`) — **tidak boleh** ada `http://localhost:5000` hardcoded di service atau halaman manapun
 - Custom hooks untuk logic yang dipakai di banyak tempat (`useAuth`, `useQRScanner`, dll)
 - File naming: `PascalCase` untuk komponen (`.tsx`), `camelCase` untuk hooks/services (`.ts`)
-- Styling: CSS Modules (`.module.css`) atau file di `styles/`
+- Styling: CSS Modules (`.module.css`) di folder `styles/`
 
 ### Supabase Client
 - **Backend**: gunakan `SUPABASE_SERVICE_KEY` (Service Role) → bypass semua RLS
@@ -527,7 +550,7 @@ Base URL: `http://localhost:5000` (dev)
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
 | GET | `/instances/:id` | Detail instance + history | All | ⬜ Planned |
-| GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ⬜ Planned |
+| GET | `/instances/:id/activities` | Timeline perjalanan instance (join activities + profiles) | All | ✅ |
 | POST | `/instances/:id/scan` | Scan & catat aktivitas baru | KONSUMEN / PETUGAS | ✅ |
 
 ### Uploads
@@ -535,10 +558,10 @@ Base URL: `http://localhost:5000` (dev)
 |---|---|---|---|---|
 | POST | `/upload/evidence` | Upload foto bukti pekerjaan (multipart/form-data) | PETUGAS / KONSUMEN | ✅ |
 
-### User / Dashboard
+### User / Circular Wallet
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/users/me/collections` | Produk yang sudah dikumpulkan | KONSUMEN | ⬜ Planned |
+| GET | `/users/me/collections` | Daftar sampah yang pernah di-discard konsumen (join activities + instances + products) | KONSUMEN | ✅ |
 | GET | `/users/me/points` | Total poin + riwayat | KONSUMEN / PETUGAS | ⬜ Planned |
 | GET | `/dashboard/stats` | Statistik agregat (publik) | Public | ⬜ Planned |
 
@@ -591,13 +614,12 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 **Publik (Web)**:
 1. **Public Dashboard** — Visualisasi agregat: total sampah terlacak, distribusi per kategori, peta sebaran
 
-> **Catatan Implementasi (Screen yang Missing)**:
-> Saat mengembangkan UI, beberapa flow yang belum ada di mockup harus ditambahkan:
-> 1. ~~Form pilihan `station_type` saat register khusus untuk Petugas~~ → sudah ada di Register.tsx
-> 2. Flow "Jalur B" (Konsumen setor langsung ke Bank Sampah tanpa lewat TPS).
-> 3. Form input "Jenis Material" saat petugas melakukan proses SORTED/inspecting.
-> 4. Mode "Bulk Scan" untuk petugas agar bisa scan banyak item sekaligus tanpa delay.
-> 5. Halaman timeline end-to-end yang bisa dilihat publik.
+> **Catatan Implementasi**:
+> 1. ~~Form pilihan `station_type` saat register khusus untuk Petugas~~ → **Dihapus**. Field `station_type` tidak ada di schema `profiles`.
+> 2. Flow "Jalur B" (Konsumen setor langsung ke Bank Sampah tanpa lewat TPS) — belum diimplementasi di UI.
+> 3. ~~Form input "Jenis Material" saat petugas melakukan proses SORTED/inspecting~~ → **Sudah diimplementasi** di `PetugasScan.tsx`.
+> 4. Mode "Bulk Scan" untuk petugas agar bisa scan banyak item sekaligus tanpa delay — belum diimplementasi.
+> 5. Halaman timeline end-to-end yang bisa dilihat publik — belum diimplementasi.
 
 ---
 
@@ -639,12 +661,15 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 19. **QR Code generation** — menggunakan library `qrcode` (npm). Output berupa base64 data URL PNG. QR encode GS1 Digital Link URL (`https://sampahku.id/01/{GTIN}/21/{serial}` atau `/10/{batch}`).
 20. **Product stats aggregation** — `GET /products` mengembalikan stats per-produk (total instances, recycled count, disposed count, in_progress count, in_market count) yang di-aggregate dari `product_instances.current_status`.
 21. **Frontend modal pattern** — form pembuatan produk/instance menggunakan popup modal (overlay + animated card), bukan halaman terpisah. Modal di-close pada klik overlay atau tombol X.
-
 22. **Supabase Auth Session Pollution**: Fungsi `signInWithPassword` dan `signUp` di backend **HARUS** menggunakan instansiasi client Ephemeral (sementara) dengan opsi `persistSession: false`. Hal ini krusial untuk mencegah tercemarnya singleton `supabase` (Service Role) oleh session JWT user biasa, yang menyebabkan RLS tiba-tiba aktif dan menggagalkan query backend lainnya (seperti error *RLS violation* saat BRAND membuat produk).
 23. **Uploads Architecture**: Frontend **tidak boleh** berinteraksi langsung dengan Supabase Storage. File dikirim via `FormData` ke backend `/upload/evidence` menggunakan `multer` (memory storage), dan backend yang akan menggunakan Service Role untuk upload ke Supabase Storage, mengembalikan `evidence_url` ke frontend.
 24. **Auth Middleware Fallback**: Jika query ke tabel `profiles` gagal, middleware otentikasi akan menggunakan data `user_metadata` dari token JWT sebagai cadangan (fallback), memastikan sistem RBAC (`req.profile.role`) tetap berfungsi bahkan jika ada *delay* sinkronisasi database.
 25. **Frontend Supabase Decoupling**: Frontend tidak memuat SDK Supabase. Autentikasi OAuth (Google) dilakukan dengan cara frontend memanggil `GET /auth/google`, lalu backend me-return URL Supabase OAuth, frontend me-redirect pengguna ke URL tersebut, dan Supabase me-redirect kembali ke frontend dengan `#access_token=...` yang kemudian di-parsing secara lokal di frontend.
+26. **Circular Wallet Flow**: Konsumen scan → `POST /instances/:id/scan` (biz_step `discarding`) → data tersimpan di `activities`. Dashboard konsumen membaca `GET /users/me/collections` yang melakukan join: `activities` (filter `biz_step='discarding'` & `actor_id=user`) → `product_instances` → `products`. Detail timeline dibaca via `GET /instances/:id/activities`.
+27. **`/users/me/collections` Logic**: Query join `activities` → `product_instances` → `products`. Filter `biz_step = 'discarding'` dan `actor_id = konsumen.id`. Hasilnya di-flatten ke struktur flat untuk kemudahan konsumsi frontend. Sorted by `timestamp DESC`.
+28. **`/instances/:id/activities` Logic**: Return dua objek: `instance` (data product_instances + join products + join profiles brand) dan `activities` (semua rows activities untuk instance tersebut, join profiles actor, sorted ASC untuk tampil kronologis).
+29. **Frontend Constants Pattern**: Saat membuat fitur baru yang menggunakan nilai role, SELALU import dari `constants/roles.ts`. Saat membutuhkan navigasi berdasarkan role, SELALU gunakan `getHomeRouteByRole()` dari `constants/routes.ts`. Jangan pernah hardcode string role atau path redirect di komponen.
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-03 (Penghapusan total Supabase Client dari Frontend).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-05 (Refactor frontend architecture — constants/config centralization + Implementasi Circular Wallet backend+frontend).*

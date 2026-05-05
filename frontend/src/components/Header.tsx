@@ -33,7 +33,7 @@ const Header: React.FC = () => {
         const response = await getMe();
         if (response.data) {
           // Gunakan name dari tabel profiles (prioritas utama), fallback ke metadata auth
-          const name = response.data.name || response.data.user_metadata?.name || 'Pengguna';
+          const name = response.data.name || 'Pengguna';
           setUserName(name);
           
           if (response.data.role) {

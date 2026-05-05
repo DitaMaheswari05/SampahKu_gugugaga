@@ -25,7 +25,7 @@ const Logout: React.FC = () => {
         // Fetch data asli dari database via backend
         const response = await getMe();
         if (response.data) {
-          const name = response.data.name || response.data.user_metadata?.name || 'Pengguna';
+          const name = response.data.name || 'Pengguna';
           setUserName(name);
         }
       } catch (error) {
@@ -43,6 +43,7 @@ const Logout: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+    navigate('/login', { replace: true });
   };
 
   const handleCancel = () => {

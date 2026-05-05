@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   getProducts,
   getProductDetail,
@@ -93,6 +93,7 @@ const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [qrError, setQrError] = useState('');
 
   // Modal states
   const [showCreateProduct, setShowCreateProduct] = useState(false);
@@ -144,11 +145,12 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleViewQR = async (instanceId: string) => {
+    setQrError('');
     try {
       const data = await getInstanceQR(instanceId);
       setShowQR({ gs1Url: data.gs1Url, qrDataUrl: data.qrDataUrl });
     } catch (e: any) {
-      alert('Gagal generate QR: ' + e.message);
+      setQrError('Gagal generate QR: ' + e.message);
     }
   };
 
@@ -178,6 +180,7 @@ const ProductManagement: React.FC = () => {
         </div>
 
         {error && <div className={styles.errorBanner}>{error}</div>}
+        {qrError && <div className={styles.errorBanner}>{qrError}</div>}
 
         {loading ? (
           <div className={styles.loading}>
