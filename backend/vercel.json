@@ -1,9 +1,14 @@
 {
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+  "experimentalServices": {
+    "frontend": {
+      "entrypoint": "frontend",
+      "routePrefix": "/",
+      "framework": "create-react-app"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/api",
+      "framework": "express"
     }
-  ]
+  }
 }
