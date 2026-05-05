@@ -670,6 +670,8 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 27. **`/users/me/collections` Logic**: Query join `activities` → `product_instances` → `products`. Filter `biz_step = 'discarding'` dan `actor_id = konsumen.id`. Hasilnya di-flatten ke struktur flat untuk kemudahan konsumsi frontend. Sorted by `timestamp DESC`.
 28. **`/instances/:id/activities` Logic**: Return dua objek: `instance` (data product_instances + join products + join profiles brand) dan `activities` (semua rows activities untuk instance tersebut, join profiles actor, sorted ASC untuk tampil kronologis).
 29. **Frontend Constants Pattern**: Saat membuat fitur baru yang menggunakan nilai role, SELALU import dari `constants/roles.ts`. Saat membutuhkan navigasi berdasarkan role, SELALU gunakan `getHomeRouteByRole()` dari `constants/routes.ts`. Jangan pernah hardcode string role atau path redirect di komponen.
+30. **Auth Identities**: Seeder manual untuk `auth.users` via SQL HARUS selalu disertai insert ke `auth.identities` dengan provider `email` agar sistem login Supabase GoTrue mengizinkan akses (mencegah error Invalid login credentials).
+31. **Product Instances Relation**: `product_instances` menggunakan `product_id` sebagai *foreign key* ke `products`. Karena frontend banyak membutuhkan nilai `gtin`, backend (services) HARUS selalu men-*join* tabel `products` (contoh: `.select('*, products!inner(gtin)')`) dan memetakan nilai `gtin` tersebut kembali ke level *root* object (misal: `gtin: row.products.gtin`) sebelum dikirim ke frontend.
 
 ---
 

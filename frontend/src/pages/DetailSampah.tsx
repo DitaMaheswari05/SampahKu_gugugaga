@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import { getInstanceActivities, InstanceActivitiesResponse } from '../services/konsumen.service';
@@ -112,6 +112,28 @@ export default function DetailSampah() {
   const product = instance.products;
   const isRecyclable = ['RECYCLED', 'AT_FACILITY', 'SORTED', 'IN_TRANSIT'].includes(instance.current_status)
     || instance.current_status !== 'DISPOSED';
+  const isBatch = instance.identification_type === 'BATCH';
+
+  const displayActivities = useMemo(() => {
+    if (!isBatch) return activities;
+
+    const counts: Record<string, number> = {};
+    const latestEvents: Record<string, any> = {};
+    const totalDiscarded = activities.filter((a: any) => a.biz_step === 'discarding').length || 1;
+
+    activities.forEach((a: any) => {
+      counts[a.biz_step] = (counts[a.biz_step] || 0) + 1;
+      if (!latestEvents[a.biz_step] || new Date(a.timestamp) > new Date(latestEvents[a.biz_step].timestamp)) {
+        latestEvents[a.biz_step] = a;
+      }
+    });
+
+    return Object.entries(latestEvents).map(([biz_step, event]) => ({
+      ...event,
+      count: counts[biz_step],
+      percentage: Math.min(100, Math.round((counts[biz_step] / totalDiscarded) * 100))
+    })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [activities, isBatch]);
 
   return (
     <div className={styles.mobileContainer}>
@@ -179,13 +201,13 @@ export default function DetailSampah() {
         <div className={`${styles.card} ${styles.timelineSection}`}>
           <h2 className={styles.timelineTitle}>Perjalanan Sampah</h2>
 
-          {activities.length === 0 ? (
+          {displayActivities.length === 0 ? (
             <p style={{ color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>
               Belum ada aktivitas tercatat.
             </p>
           ) : (
             <div className={styles.timelineList}>
-              {activities.map((event) => (
+              {displayActivities.map((event: any) => (
                 <div className={styles.timelineItem} key={event.id}>
                   {/* Lingkaran Hijau Checkmark */}
                   <div className={styles.timelineIcon}>
@@ -199,6 +221,11 @@ export default function DetailSampah() {
                     <div className={styles.timelineHeader}>
                       <h3>{BIZ_STEP_LABELS[event.biz_step] || event.biz_step}</h3>
                       <p>{BIZ_STEP_DESC[event.biz_step] || ''}</p>
+                      {isBatch && (
+                        <div style={{ marginTop: '0.5rem', fontWeight: 'bold', color: 'var(--primary)', fontSize: '0.85rem' }}>
+                          Sebanyak {event.percentage}% ({event.count} item) telah mencapai tahap ini
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.timelineBadges}>

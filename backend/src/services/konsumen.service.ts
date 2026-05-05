@@ -21,6 +21,7 @@ export class KonsumenService {
           serial_number,
           last_updated,
           products!inner (
+            gtin,
             product_name,
             category,
             weight_grams
@@ -38,7 +39,7 @@ export class KonsumenService {
       activity_id: row.id,
       collected_at: row.timestamp,
       instance_id: row.instance_id,
-      gtin: row.product_instances.gtin,
+      gtin: row.product_instances.products.gtin,
       current_status: row.product_instances.current_status,
       identification_type: row.product_instances.identification_type,
       batch_number: row.product_instances.batch_number,
@@ -66,6 +67,7 @@ export class KonsumenService {
         serial_number,
         last_updated,
         products!inner (
+          gtin,
           product_name,
           category,
           weight_grams,
@@ -100,8 +102,13 @@ export class KonsumenService {
 
     if (actErr) throw actErr;
 
+    const result = {
+      ...instanceData,
+      gtin: (instanceData as any).products?.gtin,
+    };
+
     return {
-      instance: instanceData,
+      instance: result,
       activities: activities ?? [],
     };
   }

@@ -47,7 +47,7 @@ export class ProductService {
     // Verify the product belongs to this brand
     const { data: product, error: pErr } = await supabase
       .from('products')
-      .select('gtin, brand_id')
+      .select('id, gtin, brand_id')
       .eq('gtin', gtin)
       .single();
 
@@ -68,7 +68,7 @@ export class ProductService {
     const { data: instance, error: iErr } = await supabase
       .from('product_instances')
       .insert([{
-        gtin,
+        product_id: product.id,
         identification_type,
         batch_number: batch_number || null,
         serial_number: serial_number || null,
@@ -137,8 +137,8 @@ export class ProductService {
 
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .select('gtin, current_status, identification_type')
-      .in('gtin', gtins);
+      .select('current_status, identification_type, products!inner(gtin)')
+      .in('products.gtin', gtins);
 
     if (iErr) throw iErr;
 
@@ -152,10 +152,12 @@ export class ProductService {
     }> = {};
 
     for (const inst of (instances || [])) {
-      if (!statsMap[inst.gtin]) {
-        statsMap[inst.gtin] = { total: 0, recycled: 0, disposed: 0, in_market: 0, in_progress: 0 };
+      const pGtin = (inst.products as any)?.gtin;
+      if (!pGtin) continue;
+      if (!statsMap[pGtin]) {
+        statsMap[pGtin] = { total: 0, recycled: 0, disposed: 0, in_market: 0, in_progress: 0 };
       }
-      const s = statsMap[inst.gtin];
+      const s = statsMap[pGtin];
       s.total++;
       if (inst.current_status === 'RECYCLED') s.recycled++;
       else if (inst.current_status === 'DISPOSED') s.disposed++;
@@ -183,8 +185,8 @@ export class ProductService {
 
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .select('*')
-      .eq('gtin', gtin)
+      .select('*, products!inner(gtin)')
+      .eq('products.gtin', gtin)
       .order('last_updated', { ascending: false });
 
     if (iErr) throw iErr;
@@ -199,7 +201,12 @@ export class ProductService {
       else stats.in_progress++;
     }
 
-    return { product, instances: instances || [], stats };
+    const mappedInstances = (instances || []).map((inst: any) => ({
+      ...inst,
+      gtin: inst.products?.gtin
+    }));
+
+    return { product, instances: mappedInstances, stats };
   }
 
   /**
@@ -215,10 +222,11 @@ export class ProductService {
     if (error || !instance) throw new Error('Instance not found');
 
     let gs1Url: string;
+    const gtin = (instance.products as any)?.gtin;
     if (instance.identification_type === 'UNIQUE') {
-      gs1Url = `${GS1_BASE_URL}/01/${instance.gtin}/21/${instance.serial_number}`;
+      gs1Url = `${GS1_BASE_URL}/01/${gtin}/21/${instance.serial_number}`;
     } else {
-      gs1Url = `${GS1_BASE_URL}/01/${instance.gtin}/10/${instance.batch_number}`;
+      gs1Url = `${GS1_BASE_URL}/01/${gtin}/10/${instance.batch_number}`;
     }
 
     const qrDataUrl = await QRCode.toDataURL(gs1Url, {
@@ -228,7 +236,11 @@ export class ProductService {
       errorCorrectionLevel: 'M',
     });
 
-    return { gs1Url, qrDataUrl, instance };
+    return { 
+      gs1Url, 
+      qrDataUrl, 
+      instance: { ...instance, gtin } 
+    };
   }
 
   /**
@@ -239,8 +251,8 @@ export class ProductService {
     
     const { data: instance, error } = await supabase
       .from('product_instances')
-      .select('id, current_status, gtin, products(product_name, category)')
-      .eq('gtin', gtin)
+      .select('id, current_status, products!inner(gtin, product_name, category)')
+      .eq('products.gtin', gtin)
       .eq(column, identifier)
       .single();
 
