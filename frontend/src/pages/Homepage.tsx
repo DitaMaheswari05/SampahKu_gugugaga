@@ -1,17 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getDashboardStats, DashboardStats } from '../services/public.service';
 import styles from '../styles/Home.module.css';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   // Efek untuk mengaktifkan smooth scroll secara global
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
+    
+    // Fetch stats
+    getDashboardStats()
+      .then(data => setStats(data))
+      .catch(err => console.error('Error fetching stats:', err));
+
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
     };
   }, []);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
+    }
+    return num.toString();
+  };
 
   return (
     <div className={styles.mobileContainer} id="beranda">
@@ -67,17 +82,17 @@ const Home: React.FC = () => {
         {/* Stats */}
         <div className={styles.stats}>
           <div className={styles.statItem}>
-            <h2>90%</h2>
+            <h2>{stats ? `${stats.recovery_rate}%` : '...'}</h2>
             <p>Recovery Rate</p>
           </div>
           <div className={styles.divider}></div>
           <div className={styles.statItem}>
-            <h2>28K+</h2>
+            <h2>{stats ? formatNumber(stats.tracked_products) : '...'}</h2>
             <p>Produk Terlacak</p>
           </div>
           <div className={styles.divider}></div>
           <div className={styles.statItem}>
-            <h2>2.4K+</h2>
+            <h2>{stats ? formatNumber(stats.active_users) : '...'}</h2>
             <p>Pengguna Aktif</p>
           </div>
         </div>
