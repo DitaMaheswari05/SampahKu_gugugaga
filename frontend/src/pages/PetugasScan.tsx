@@ -4,7 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import Header from '../components/Header';
 import styles from '../styles/KonsumenScan.module.css';
 
-const API_URL = 'http://localhost:5000';
+import { API_BASE_URL as API_URL } from '../config';
 
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
