@@ -1,4 +1,4 @@
-import { API_URL } from '../config';
+import { API_BASE_URL as API_URL } from '../config';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('token');
