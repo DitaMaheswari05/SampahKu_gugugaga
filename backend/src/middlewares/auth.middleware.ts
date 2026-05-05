@@ -1,5 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../config/supabase';
+import { User } from '@supabase/supabase-js';
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: User;
+            profile?: {
+                id: string;
+                email: string;
+                name: string;
+                role: string;
+                points?: number;
+                created_at?: string;
+            } | null;
+        }
+    }
+}
 
 export const protect = async (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.split(' ')[1];
