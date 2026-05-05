@@ -8,6 +8,8 @@ function getAuthHeaders(): Record<string, string> {
   };
 }
 
+// --- Types ---
+
 export interface ProductStats {
   total: number;
   recycled: number;
@@ -16,11 +18,19 @@ export interface ProductStats {
   in_progress: number;
 }
 
+export interface MaterialPassport {
+  '@context': string;
+  '@type': string;
+  material: Array<{ name: string; percentage: number; recyclable: boolean }>;
+  recyclingInstructions: string;
+  carbonFootprint?: string;
+}
+
 export interface Product {
   gtin: string;
   brand_id: string;
   product_name: string;
-  material_passport: any;
+  material_passport: MaterialPassport;
   category: string | null;
   weight_grams: number | null;
   created_at: string;
@@ -49,6 +59,16 @@ export interface InstanceCreateResult {
   qrDataUrl: string;
 }
 
+export interface CreateProductPayload {
+  gtin: string;
+  product_name: string;
+  category?: string;
+  weight_grams?: number;
+  material_passport?: Partial<MaterialPassport>;
+}
+
+// --- Functions ---
+
 export const getProducts = async (): Promise<Product[]> => {
   const response = await fetch(`${API_URL}/products`, {
     headers: getAuthHeaders(),
@@ -71,13 +91,7 @@ export const getProductDetail = async (gtin: string): Promise<ProductDetail> => 
   return data.data;
 };
 
-export const createProduct = async (payload: {
-  gtin: string;
-  product_name: string;
-  category?: string;
-  weight_grams?: number;
-  material_passport?: any;
-}): Promise<any> => {
+export const createProduct = async (payload: CreateProductPayload): Promise<Product> => {
   const response = await fetch(`${API_URL}/products`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -110,7 +124,9 @@ export const createInstance = async (
   return data.data;
 };
 
-export const getInstanceQR = async (instanceId: string): Promise<{ gs1Url: string; qrDataUrl: string }> => {
+export const getInstanceQR = async (
+  instanceId: string
+): Promise<{ gs1Url: string; qrDataUrl: string }> => {
   const response = await fetch(`${API_URL}/products/instances/${instanceId}/qr`, {
     headers: getAuthHeaders(),
   });

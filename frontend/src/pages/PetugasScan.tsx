@@ -1,23 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import Header from '../components/Header';
+import {
+  resolveGS1Link,
+  uploadEvidence,
+  scanInstance,
+  ProductInstanceResolved,
+  ScanPayload,
+} from '../services/petugas.service';
 import styles from '../styles/KonsumenScan.module.css';
 
-import { API_BASE_URL as API_URL } from '../config';
 
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
 export default function PetugasScan() {
   const navigate = useNavigate();
-  
+
   // UI & Scan States
   const [step, setStep] = useState<ScanStep>('scan');
-  const [instance, setInstance] = useState<any>(null);
+  const [instance, setInstance] = useState<ProductInstanceResolved | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  
+
   const [bizStep, setBizStep] = useState('collecting');
   const [locationName, setLocationName] = useState('');
   const [facilityType, setFacilityType] = useState('TPS');
@@ -27,121 +33,33 @@ export default function PetugasScan() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Pastikan hanya role petugas yang menggunakan halaman ini
-  useEffect(() => {
-    const role = localStorage.getItem('role');
-    if (role && role !== 'PETUGAS') {
-      if (role === 'KONSUMEN') navigate('/dashboard');
-      else if (role === 'BRAND') navigate('/products');
-    }
-  }, [navigate]);
-
   // Cleanup kamera saat komponen di-unmount
   useEffect(() => {
     return () => {
       stopScanner();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- KONTROL KAMERA SECARA MANUAL ---
-  const startScanner = async () => {
-    setErrorMsg('');
-    try {
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode("qr-reader");
-      }
-      
-      await html5QrCodeRef.current.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        onScanSuccess,
-        onScanFailure
-      );
-      setIsCameraOpen(true);
-    } catch (err: any) {
-      console.error("Gagal memulai kamera:", err);
-      setErrorMsg("Gagal mengakses kamera. Pastikan izin kamera telah diberikan.");
-    }
-  };
-
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current.clear();
       } catch (err) {
-        console.error("Gagal menghentikan kamera:", err);
+        console.error('Gagal menghentikan kamera:', err);
       }
     }
     setIsCameraOpen(false);
-  };
+  }, []);
 
-  const onScanSuccess = async (decodedText: string) => {
+  const onScanSuccess = useCallback(async (decodedText: string) => {
     await stopScanner();
-    resolveGS1Link(decodedText);
-  };
-
-  const onScanFailure = (err: any) => {
-    // Abaikan error per-frame
-  };
-
-  // Fungsi Scan dari Upload File Gambar
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      await stopScanner();
-
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode("qr-reader");
-      }
-      
-      const decodedText = await html5QrCodeRef.current.scanFile(file, true);
-      html5QrCodeRef.current.clear();
-      resolveGS1Link(decodedText);
-    } catch (err: any) {
-      setErrorMsg("Gagal membaca QR code dari gambar. Pastikan gambar jelas.");
-      setStep('scan');
-    } finally {
-      setLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  // Resolve GS1 Link ke Backend
-  const resolveGS1Link = async (url: string) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const parts = url.split('/');
-      const gtinIndex = parts.indexOf('01') + 1;
-      const serialIndex = parts.indexOf('21') + 1;
-      const batchIndex = parts.indexOf('10') + 1;
-
-      const gtin = parts[gtinIndex];
-      const serial = serialIndex > 0 ? parts[serialIndex] : null;
-      const batch = batchIndex > 0 ? parts[batchIndex] : null;
-
-      if (!gtin || (!serial && !batch)) {
-        throw new Error('Format QR bukan GS1 Digital Link yang valid.');
-      }
-
-      let query = `?gtin=${gtin}`;
-      if (serial) query += `&serial=${serial}`;
-      if (batch) query += `&batch=${batch}`;
-
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/products/resolve${query}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Gagal memuat data produk');
-      
-      setInstance(data.data);
+      const data = await resolveGS1Link(decodedText);
+      setInstance(data);
       setStep('preview');
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -149,58 +67,77 @@ export default function PetugasScan() {
     } finally {
       setLoading(false);
     }
+  }, [stopScanner]);
+
+  const startScanner = async () => {
+    setErrorMsg('');
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+      }
+      await html5QrCodeRef.current.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        (_err: any) => { /* Abaikan error per-frame */ }
+      );
+      setIsCameraOpen(true);
+    } catch (err: any) {
+      console.error('Gagal memulai kamera:', err);
+      setErrorMsg('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.');
+    }
   };
 
-  // Upload File Bukti Fisik
-  const uploadEvidence = async (): Promise<string | null> => {
-    if (!evidenceFile) return null;
-    
-    const formData = new FormData();
-    formData.append('evidence', evidenceFile);
-    const token = localStorage.getItem('token');
-    
-    const res = await fetch(`${API_URL}/upload/evidence`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Gagal upload foto');
-    return data.data.evidence_url;
+  // Scan dari Upload File Gambar
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setErrorMsg('');
+    await stopScanner();
+
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+      }
+      const decodedText = await html5QrCodeRef.current.scanFile(file, true);
+      html5QrCodeRef.current.clear();
+
+      const data = await resolveGS1Link(decodedText);
+      setInstance(data);
+      setStep('preview');
+    } catch (err: any) {
+      setErrorMsg('Gagal membaca QR code dari gambar. Pastikan gambar jelas.');
+      setStep('scan');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // Submit Aktivitas Petugas
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!instance) return;
+
     setLoading(true);
     setErrorMsg('');
     try {
-      let evidence_url = null;
+      let evidence_url: string | null = null;
       if (evidenceFile) {
-        evidence_url = await uploadEvidence();
+        evidence_url = await uploadEvidence(evidenceFile);
       }
 
-      const token = localStorage.getItem('token');
-      const payload = {
+      const payload: ScanPayload = {
         biz_step: bizStep,
         location_name: locationName,
         facility_type: facilityType,
         material_type: bizStep === 'inspecting' ? materialType : undefined,
-        evidence_url
+        evidence_url,
       };
 
-      const res = await fetch(`${API_URL}/instances/${instance.id}/scan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Gagal menyimpan data scan');
-
+      await scanInstance(instance.id, payload);
       setStep('success');
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -210,7 +147,6 @@ export default function PetugasScan() {
     }
   };
 
-  // Reset State ke Awal
   const handleRetake = () => {
     setInstance(null);
     setErrorMsg('');
@@ -222,7 +158,7 @@ export default function PetugasScan() {
   return (
     <div className={styles.mobileContainer}>
       <Header />
-      
+
       <main className={styles.content}>
         <div className={styles.headerText}>
           <h1 className={styles.title}>Scanner Petugas</h1>
@@ -232,15 +168,15 @@ export default function PetugasScan() {
         {errorMsg && step === 'scan' && <div className={styles.errorAlert}>{errorMsg}</div>}
 
         <div className={styles.card}>
-          
+
           {/* STATE 1: SCANNING */}
           {step === 'scan' && (
             <>
               <div className={styles.cameraBox}>
                 <div id="qr-reader" className={styles.scannerContainer}></div>
-                
+
                 {loading && <p className={styles.loadingText}>Memproses...</p>}
-                
+
                 {!loading && !isCameraOpen && (
                   <>
                     <p className={styles.cameraText}>Arahkan kamera ke QR code</p>
@@ -250,15 +186,12 @@ export default function PetugasScan() {
               </div>
 
               {!isCameraOpen ? (
-                <button 
-                  className={styles.btnPrimary} 
-                  onClick={startScanner}
-                >
+                <button className={styles.btnPrimary} onClick={startScanner}>
                   Mulai Pemindaian
                 </button>
               ) : (
-                <button 
-                  className={styles.btnPrimary} 
+                <button
+                  className={styles.btnPrimary}
                   onClick={stopScanner}
                   style={{ backgroundColor: '#FB2C36' }}
                 >
@@ -266,8 +199,8 @@ export default function PetugasScan() {
                 </button>
               )}
 
-              <button 
-                className={styles.btnSecondary} 
+              <button
+                className={styles.btnSecondary}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -277,13 +210,13 @@ export default function PetugasScan() {
                 </svg>
                 Upload Gambar QR Code
               </button>
-              
-              <input 
-                type="file" 
-                accept="image/*" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
-                onChange={handleFileUpload} 
+
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
               />
             </>
           )}
@@ -324,7 +257,14 @@ export default function PetugasScan() {
 
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Nama Lokasi</label>
-                  <input type="text" value={locationName} onChange={e => setLocationName(e.target.value)} placeholder="Contoh: TPS Kelurahan X" required className={styles.inputStyle} />
+                  <input
+                    type="text"
+                    value={locationName}
+                    onChange={e => setLocationName(e.target.value)}
+                    placeholder="Contoh: TPS Kelurahan X"
+                    required
+                    className={styles.inputStyle}
+                  />
                 </div>
 
                 {['receiving', 'collecting', 'inspecting', 'shipping', 'recycling', 'disposing'].includes(bizStep) && (
@@ -356,10 +296,10 @@ export default function PetugasScan() {
 
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Foto Bukti (Opsional)</label>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => setEvidenceFile(e.target.files?.[0] || null)} 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setEvidenceFile(e.target.files?.[0] || null)}
                     className={styles.fileInput}
                   />
                 </div>
@@ -390,10 +330,7 @@ export default function PetugasScan() {
                 <p className={styles.statusDesc}>Status sampah berhasil diperbarui. Poin telah ditambahkan ke akun Anda!</p>
               </div>
               <div style={{ width: '100%', marginTop: '10px' }}>
-                <button 
-                  className={styles.btnPrimary} 
-                  onClick={() => handleRetake()}
-                >
+                <button className={styles.btnPrimary} onClick={handleRetake}>
                   Pindai Sampah Lainnya
                 </button>
               </div>
@@ -415,10 +352,7 @@ export default function PetugasScan() {
                 <p className={styles.statusDesc}>{errorMsg || 'Terjadi kesalahan saat memperbarui status sampah.'}</p>
               </div>
               <div style={{ width: '100%', marginTop: '10px' }}>
-                <button 
-                  className={styles.btnSecondary} 
-                  onClick={handleRetake}
-                >
+                <button className={styles.btnSecondary} onClick={handleRetake}>
                   Coba Pindai Ulang
                 </button>
               </div>

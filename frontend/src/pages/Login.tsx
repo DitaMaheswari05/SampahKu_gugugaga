@@ -1,84 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login, getMe, loginWithGoogle } from '../services/auth.service';
+import { ROLES, UserRole } from '../constants/roles';
+import { getHomeRouteByRole } from '../constants/routes';
 import styles from '../styles/Login.module.css';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('KONSUMEN'); 
+  const [selectedRole, setSelectedRole] = useState<UserRole>(ROLES.KONSUMEN);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false); 
+  const [showToast, setShowToast] = useState(false);
   const navigate = useNavigate();
 
+  /** Redirect ke home role setelah autentikasi berhasil. */
+  const redirectByRole = (role: string) => {
+    navigate(getHomeRouteByRole(role), { replace: true });
+  };
+
   useEffect(() => {
-    // Check if coming from Google OAuth (Implicit Flow)
+    // Handle Google OAuth Implicit Flow: Supabase redirect kembali dengan #access_token
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       const params = new URLSearchParams(hash.substring(1));
       const token = params.get('access_token');
       if (token) {
         localStorage.setItem('token', token);
-        // Clear hash from URL for security/cleanliness
         window.history.replaceState(null, '', window.location.pathname);
-        
-        getMe().then(profileData => {
-          if (profileData.data && profileData.data.role) {
-            const userRole = profileData.data.role;
-            localStorage.setItem('role', userRole);
-            if (userRole === 'BRAND') navigate('/brand/dashboard');
-            else if (userRole === 'PETUGAS') navigate('/petugas/dashboard');
-            else navigate('/dashboard');
-          } else {
-            navigate('/dashboard');
-          }
-        }).catch(() => {
-          navigate('/dashboard');
-        });
-        return; // wait for redirect
+        getMe()
+          .then((profileData) => {
+            const role = profileData.data?.role ?? ROLES.KONSUMEN;
+            localStorage.setItem('role', role);
+            redirectByRole(role);
+          })
+          .catch(() => redirectByRole(ROLES.KONSUMEN));
+        return;
       }
     }
 
-    if (localStorage.getItem('token')) {
-      const storedRole = localStorage.getItem('role');
-      if (storedRole === 'BRAND') navigate('/brand/dashboard');
-      else if (storedRole === 'PETUGAS') navigate('/petugas/dashboard');
-      else navigate('/dashboard');
+    // Sudah login — redirect langsung
+    const token = localStorage.getItem('token');
+    const storedRole = localStorage.getItem('role');
+    if (token && storedRole) {
+      redirectByRole(storedRole);
     }
-  }, [navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Login Reguler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
       const data = await login(email, password);
-
-      if (data.data && data.data.session) {
+      if (data.data?.session) {
         localStorage.setItem('token', data.data.session.access_token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
-        
         try {
           const profileData = await getMe();
-          if (profileData.data && profileData.data.role) {
-            const role = profileData.data.role;
-            localStorage.setItem('role', role);
-            
-            setShowToast(true);
-            setTimeout(() => {
-              setShowToast(false);
-              if (role === 'BRAND') navigate('/brand/dashboard');
-              else if (role === 'PETUGAS') navigate('/petugas/dashboard');
-              else navigate('/dashboard');
-            }, 1500);
-          } else {
-             navigate('/dashboard');
-          }
-        } catch(e) {
-          navigate('/dashboard');
+          const role = profileData.data?.role ?? ROLES.KONSUMEN;
+          localStorage.setItem('role', role);
+          setShowToast(true);
+          setTimeout(() => { setShowToast(false); redirectByRole(role); }, 1500);
+        } catch {
+          redirectByRole(ROLES.KONSUMEN);
         }
       }
     } catch (err: any) {
@@ -88,7 +74,6 @@ const Login: React.FC = () => {
     }
   };
 
-  // Login Google Real
   const handleGoogleLogin = async () => {
     setError('');
     try {
@@ -100,30 +85,26 @@ const Login: React.FC = () => {
 
   return (
     <div className={styles.mobileContainer}>
-      {showToast && (
-        <div className={styles.toast}>
-          Login Berhasil! Mengalihkan ke Dashboard...
-        </div>
-      )}
+      {showToast && <div className={styles.toast}>Login Berhasil! Mengalihkan ke Dashboard...</div>}
 
       <div className={styles.card}>
         <div className={styles.logoHeader}>
-          <div className={styles.logoIcon}>
-            <img src="/assets/logo_sampahku.png" alt="Icon" />
-          </div>
+          <div className={styles.logoIcon}><img src="/assets/logo_sampahku.png" alt="Icon" /></div>
           <span className={styles.logoText}>Sampahku</span>
         </div>
 
         <h1 className={styles.title}>Selamat Datang Kembali</h1>
         <p className={styles.subtitle}>Masuk untuk melanjutkan perjalanan circular Anda</p>
 
+        {/* Tabs role — visual context, role ditentukan server-side saat login */}
         <div className={styles.tabs}>
-          <div className={`${styles.tab} ${role === 'KONSUMEN' ? styles.tabActive : ''}`} onClick={() => setRole('KONSUMEN')}>
-          </div>
-          <div className={`${styles.tab} ${role === 'PETUGAS' ? styles.tabActive : ''}`} onClick={() => setRole('PETUGAS')}>
-          </div>
-          <div className={`${styles.tab} ${role === 'BRAND' ? styles.tabActive : ''}`} onClick={() => setRole('BRAND')}>
-          </div>
+          {[ROLES.KONSUMEN, ROLES.PETUGAS, ROLES.BRAND].map((r) => (
+            <div
+              key={r}
+              className={`${styles.tab} ${selectedRole === r ? styles.tabActive : ''}`}
+              onClick={() => setSelectedRole(r)}
+            />
+          ))}
         </div>
 
         {error && <div className={styles.errorMessage}>{error}</div>}
@@ -160,7 +141,6 @@ const Login: React.FC = () => {
           <div className={styles.dividerLine}></div>
         </div>
 
-        {/* Tombol Login Google */}
         <button className={styles.googleBtn} type="button" onClick={handleGoogleLogin}>
           <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

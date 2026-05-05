@@ -11,26 +11,35 @@ import DashboardCompany from './pages/Dashboard_Company';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
 import DetailSampah from './pages/DetailSampah';
+import { ROLES } from './constants/roles';
+import { getHomeRouteByRole } from './constants/routes';
 
-// Komponen Wrapper untuk memproteksi Route berdasarkan status login dan role
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
+/**
+ * Proteksi route berdasarkan status login dan role.
+ * Menambahkan role baru cukup di ROLE_HOME_ROUTES di constants/routes.ts,
+ * komponen ini tidak perlu dimodifikasi (Open/Closed Principle).
+ */
+const ProtectedRoute = ({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}) => {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('role');
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-    if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // Arahkan ke dashboard masing-masing sesuai role yang valid
-    if (role === 'BRAND') return <Navigate to="/brand/dashboard" replace />;
-    if (role === 'PETUGAS') return <Navigate to="/petugas/dashboard" replace />;
-    return <Navigate to="/dashboard" replace />;
+
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to={getHomeRouteByRole(role)} replace />;
   }
 
   return <>{children}</>;
 };
 
-// Kalau mau ubah route untuk role tertentu, tinggal ubah disini
 function App() {
   return (
     <Router>
@@ -41,80 +50,78 @@ function App() {
         <Route path="/" element={<Home />} />
 
         {/* Protected Routes - Role: BRAND */}
-        <Route 
-          path="/brand/dashboard" 
+        <Route
+          path="/brand/dashboard"
           element={
-            <ProtectedRoute allowedRoles={['BRAND']}>
+            <ProtectedRoute allowedRoles={[ROLES.BRAND]}>
               <DashboardCompany />
             </ProtectedRoute>
-          } 
+          }
         />
-
-        <Route 
-          path="/products" 
+        <Route
+          path="/products"
           element={
-            <ProtectedRoute allowedRoles={['BRAND']}>
+            <ProtectedRoute allowedRoles={[ROLES.BRAND]}>
               <ProductManagement />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Protected Routes - Role: PETUGAS */}
-        <Route 
-          path="/scan" 
+        <Route
+          path="/scan"
           element={
-            <ProtectedRoute allowedRoles={['PETUGAS']}>
+            <ProtectedRoute allowedRoles={[ROLES.PETUGAS]}>
               <PetugasScan />
             </ProtectedRoute>
-          } 
+          }
         />
-
-        <Route 
-          path="/petugas/dashboard" 
+        <Route
+          path="/petugas/dashboard"
           element={
-            <ProtectedRoute allowedRoles={['PETUGAS']}>
+            <ProtectedRoute allowedRoles={[ROLES.PETUGAS]}>
               <PetugasDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
 
         {/* Protected Routes - Role: KONSUMEN */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={['KONSUMEN']}>
+            <ProtectedRoute allowedRoles={[ROLES.KONSUMEN]}>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/tambah-sampah" 
+        <Route
+          path="/tambah-sampah"
           element={
-            <ProtectedRoute allowedRoles={['KONSUMEN']}>
+            <ProtectedRoute allowedRoles={[ROLES.KONSUMEN]}>
               <KonsumenScan />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/detail-sampah/:id" 
+        <Route
+          path="/detail-sampah/:id"
           element={
-            <ProtectedRoute allowedRoles={['KONSUMEN']}>
+            <ProtectedRoute allowedRoles={[ROLES.KONSUMEN]}>
               <DetailSampah />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        {/* Protected Routes - Semua role yang sudah login bisa akses */}
-        <Route 
-          path="/logout" 
+        {/* Protected Routes - Semua role yang sudah login */}
+        <Route
+          path="/logout"
           element={
             <ProtectedRoute>
               <Logout />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        {/* Redirect any unknown route to home */}
+        {/* Redirect unknown routes ke home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

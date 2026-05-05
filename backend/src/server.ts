@@ -6,6 +6,8 @@ import instancesRouter from './routes/instances'
 import productsRouter from './routes/products'
 import petugasRouter from './routes/petugas'
 import uploadRouter from './routes/upload'
+import usersRouter from './routes/users'
+import publicRouter from './routes/public'
 
 // Resolve DNS issue
 import dns from 'dns';
@@ -22,6 +24,8 @@ app.use('/instances', instancesRouter);
 app.use('/products', productsRouter);
 app.use('/petugas', petugasRouter);
 app.use('/upload', uploadRouter);
+app.use('/users', usersRouter);
+app.use('/', publicRouter);
 
 app.get('/health', (req: Request, res: Response) => {
   res.json({
