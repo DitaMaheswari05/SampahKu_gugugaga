@@ -37,7 +37,7 @@ export const createInstance = async (req: Request, res: Response) => {
   }
 
   const gtin = req.params.gtin as string;
-  const { identification_type, batch_number, serial_number } = req.body;
+  const { identification_type, batch_number, serial_number, quantity } = req.body;
 
   if (!identification_type || !['BATCH', 'UNIQUE'].includes(identification_type)) {
     return res.status(400).json({ status: 'error', message: 'identification_type must be BATCH or UNIQUE' });
@@ -48,6 +48,7 @@ export const createInstance = async (req: Request, res: Response) => {
       identification_type,
       batch_number,
       serial_number,
+      quantity: quantity ? Number(quantity) : undefined,
     });
     return res.status(201).json({ status: 'success', data: result });
   } catch (e: any) {

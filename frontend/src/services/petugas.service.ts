@@ -51,6 +51,9 @@ export interface ProductInstanceResolved {
   products?: {
     product_name: string;
     category: string | null;
+    profiles?: {
+      name: string;
+    } | null;
   };
 }
 

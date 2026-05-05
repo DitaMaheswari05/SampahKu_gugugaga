@@ -110,6 +110,7 @@ export const createInstance = async (
     identification_type: 'BATCH' | 'UNIQUE';
     batch_number?: string;
     serial_number?: string;
+    quantity?: number;
   }
 ): Promise<InstanceCreateResult> => {
   const response = await fetch(`${API_URL}/products/${gtin}/instances`, {

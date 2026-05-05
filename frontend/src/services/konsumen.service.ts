@@ -61,6 +61,10 @@ export interface InstanceDetail {
 export interface InstanceActivitiesResponse {
   instance: InstanceDetail;
   activities: ActivityEvent[];
+  /** Per-status count across all batch siblings. null for UNIQUE instances. */
+  status_counts: Record<string, number> | null;
+  /** Total number of physical items in this batch (= sibling instances). 1 for UNIQUE. */
+  sibling_count: number;
 }
 
 // --- Functions ---

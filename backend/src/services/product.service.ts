@@ -41,8 +41,9 @@ export class ProductService {
     identification_type: 'BATCH' | 'UNIQUE';
     batch_number?: string;
     serial_number?: string;
+    quantity?: number; // Only for BATCH: how many physical instances this QR represents
   }) {
-    const { identification_type, batch_number, serial_number } = payload;
+    const { identification_type, batch_number, serial_number, quantity = 1 } = payload;
 
     // Verify the product belongs to this brand
     const { data: product, error: pErr } = await supabase
@@ -64,25 +65,32 @@ export class ProductService {
       gs1Url = `${GS1_BASE_URL}/01/${gtin}/10/${batch_number}`;
     }
 
-    // Insert instance
-    const { data: instance, error: iErr } = await supabase
+    const effectiveQty = identification_type === 'BATCH' ? Math.max(1, Math.min(quantity, 10000)) : 1;
+    const now = new Date().toISOString();
+
+    // Insert instances (1 for UNIQUE, quantity for BATCH)
+    const instanceRows = Array.from({ length: effectiveQty }, () => ({
+      product_id: product.id,
+      identification_type,
+      batch_number: batch_number || null,
+      serial_number: serial_number || null,
+      current_status: 'IN_MARKET',
+      last_updated: now,
+    }));
+
+    const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .insert([{
-        product_id: product.id,
-        identification_type,
-        batch_number: batch_number || null,
-        serial_number: serial_number || null,
-        current_status: 'IN_MARKET',
-        last_updated: new Date().toISOString(),
-      }])
-      .select()
-      .single();
+      .insert(instanceRows)
+      .select();
 
-    if (iErr) throw iErr;
+    if (iErr || !instances || instances.length === 0) throw iErr || new Error('Failed to create instances');
 
-    // Record commissioning activity
-    await supabase.from('activities').insert([{
-      instance_id: instance.id,
+    const instance = instances[0]; // primary instance (used for QR)
+
+    // Record commissioning activity for every physical item so batch timelines
+    // show the full quantity that was created at market entry.
+    const commissioningActivities = instances.map((row: any) => ({
+      instance_id: row.id,
       actor_id: brandId,
       event_type: 'ObjectEvent',
       biz_step: 'commissioning',
@@ -96,7 +104,7 @@ export class ProductService {
         epcisBody: {
           eventList: [{
             type: 'ObjectEvent',
-            eventTime: new Date().toISOString(),
+            eventTime: now,
             eventTimeZoneOffset: '+07:00',
             epcList: [gs1Url],
             action: 'ADD',
@@ -104,8 +112,10 @@ export class ProductService {
           }],
         },
       },
-      timestamp: new Date().toISOString(),
-    }]);
+      timestamp: now,
+    }));
+
+    await supabase.from('activities').insert(commissioningActivities);
 
     // Generate QR code as data URL
     const qrDataUrl = await QRCode.toDataURL(gs1Url, {
@@ -115,7 +125,7 @@ export class ProductService {
       errorCorrectionLevel: 'M',
     });
 
-    return { instance, gs1Url, qrDataUrl };
+    return { instance, instances, gs1Url, qrDataUrl, quantity: effectiveQty };
   }
 
   /**
@@ -132,17 +142,20 @@ export class ProductService {
     if (error) throw error;
     if (!products || products.length === 0) return [];
 
-    // For each product, aggregate instance stats
-    const gtins = products.map((p: any) => p.gtin);
+    // Build id→gtin map for stat attribution
+    const productIdToGtin: Record<string, string> = {};
+    products.forEach((p: any) => { productIdToGtin[p.id] = p.gtin; });
+    const productIds = products.map((p: any) => p.id);
 
+    // Filter directly by product_id — avoids unreliable nested-join filtering in PostgREST
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .select('current_status, identification_type, products!inner(gtin)')
-      .in('products.gtin', gtins);
+      .select('current_status, product_id')
+      .in('product_id', productIds);
 
     if (iErr) throw iErr;
 
-    // Build stats map
+    // Build stats map keyed by gtin
     const statsMap: Record<string, {
       total: number;
       recycled: number;
@@ -152,7 +165,7 @@ export class ProductService {
     }> = {};
 
     for (const inst of (instances || [])) {
-      const pGtin = (inst.products as any)?.gtin;
+      const pGtin = productIdToGtin[(inst as any).product_id];
       if (!pGtin) continue;
       if (!statsMap[pGtin]) {
         statsMap[pGtin] = { total: 0, recycled: 0, disposed: 0, in_market: 0, in_progress: 0 };
@@ -183,10 +196,11 @@ export class ProductService {
 
     if (pErr) throw pErr;
 
+    // Filter directly by product_id — avoids unreliable nested-join filtering
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .select('*, products!inner(gtin)')
-      .eq('products.gtin', gtin)
+      .select('*')
+      .eq('product_id', product.id)
       .order('last_updated', { ascending: false });
 
     if (iErr) throw iErr;
@@ -201,9 +215,10 @@ export class ProductService {
       else stats.in_progress++;
     }
 
+    // Attach gtin from the already-fetched product row
     const mappedInstances = (instances || []).map((inst: any) => ({
       ...inst,
-      gtin: inst.products?.gtin
+      gtin: product.gtin,
     }));
 
     return { product, instances: mappedInstances, stats };
@@ -248,18 +263,51 @@ export class ProductService {
    */
   static async resolveGS1(gtin: string, identification_type: 'BATCH' | 'UNIQUE', identifier: string) {
     const column = identification_type === 'BATCH' ? 'batch_number' : 'serial_number';
-    
-    const { data: instance, error } = await supabase
-      .from('product_instances')
-      .select('id, current_status, products!inner(gtin, product_name, category)')
-      .eq('products.gtin', gtin)
-      .eq(column, identifier)
+
+    // Step 1: resolve GTIN → product
+    const { data: product, error: pErr } = await supabase
+      .from('products')
+      .select('id, gtin, product_name, category, brand_id')
+      .eq('gtin', gtin)
       .single();
 
-    if (error || !instance) {
+    if (pErr || !product) {
+      throw new Error('Product not found for given GTIN.');
+    }
+
+    let brandProfile: { name: string } | null = null;
+    if (product.brand_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', product.brand_id)
+        .single();
+
+      if (profile) {
+        brandProfile = { name: profile.name };
+      }
+    }
+
+    // Step 2: find instance by product_id + batch/serial number.
+    // BATCH QRs have MULTIPLE sibling rows — use limit(1) instead of single().
+    const { data: instances, error } = await supabase
+      .from('product_instances')
+      .select('id, current_status')
+      .eq('product_id', product.id)
+      .eq(column, identifier)
+      .limit(1);
+
+    if (error || !instances || instances.length === 0) {
       throw new Error('Product instance not found from the given GS1 Digital Link details.');
     }
 
-    return instance;
+    return {
+      ...instances[0],
+      gtin: product.gtin,
+      products: {
+        ...product,
+        profiles: brandProfile,
+      },
+    };
   }
 }
