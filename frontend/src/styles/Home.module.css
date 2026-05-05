@@ -233,7 +233,7 @@
 .cardBlue { border-color: #DBEAFE; }
 .cardPurple { border-color: #F3E8FF; }
 
-.cardIcon {
+.cardIcon img {
   width: 32px;
   height: 32px;
   background: var(--primary-light);
@@ -244,10 +244,10 @@
   margin-bottom: 12px;
 }
 
-.cardIcon img {
+/* .cardIcon img {
   width: 16px;
   height: 16px;
-}
+} */
 
 .card h3 {
   font-family: 'Inter', sans-serif;
