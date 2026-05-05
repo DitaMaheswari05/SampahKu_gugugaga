@@ -106,7 +106,8 @@ const ProductManagement: React.FC = () => {
 
   // User info
   const userRaw = localStorage.getItem('user');
-  const user = userRaw ? JSON.parse(userRaw) : null;
+  // coba buat deploy (error disini)
+  // const user = userRaw ? JSON.parse(userRaw) : null;
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
