@@ -68,6 +68,30 @@ export default function DetailSampah() {
     load();
   }, [id]);
 
+  const isBatch = data?.instance?.identification_type === 'BATCH';
+  const activities = data?.activities || [];
+
+  const displayActivities = useMemo(() => {
+    if (!isBatch || !activities.length) return activities;
+
+    const counts: Record<string, number> = {};
+    const latestEvents: Record<string, any> = {};
+    const totalDiscarded = activities.filter((a: any) => a.biz_step === 'discarding').length || 1;
+
+    activities.forEach((a: any) => {
+      counts[a.biz_step] = (counts[a.biz_step] || 0) + 1;
+      if (!latestEvents[a.biz_step] || new Date(a.timestamp) > new Date(latestEvents[a.biz_step].timestamp)) {
+        latestEvents[a.biz_step] = a;
+      }
+    });
+
+    return Object.entries(latestEvents).map(([biz_step, event]) => ({
+      ...event,
+      count: counts[biz_step],
+      percentage: Math.min(100, Math.round((counts[biz_step] / totalDiscarded) * 100))
+    })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [activities, isBatch]);
+
   if (loading) {
     return (
       <div className={styles.mobileContainer}>
@@ -108,32 +132,10 @@ export default function DetailSampah() {
     );
   }
 
-  const { instance, activities } = data;
+  const { instance } = data;
   const product = instance.products;
   const isRecyclable = ['RECYCLED', 'AT_FACILITY', 'SORTED', 'IN_TRANSIT'].includes(instance.current_status)
     || instance.current_status !== 'DISPOSED';
-  const isBatch = instance.identification_type === 'BATCH';
-
-  const displayActivities = useMemo(() => {
-    if (!isBatch) return activities;
-
-    const counts: Record<string, number> = {};
-    const latestEvents: Record<string, any> = {};
-    const totalDiscarded = activities.filter((a: any) => a.biz_step === 'discarding').length || 1;
-
-    activities.forEach((a: any) => {
-      counts[a.biz_step] = (counts[a.biz_step] || 0) + 1;
-      if (!latestEvents[a.biz_step] || new Date(a.timestamp) > new Date(latestEvents[a.biz_step].timestamp)) {
-        latestEvents[a.biz_step] = a;
-      }
-    });
-
-    return Object.entries(latestEvents).map(([biz_step, event]) => ({
-      ...event,
-      count: counts[biz_step],
-      percentage: Math.min(100, Math.round((counts[biz_step] / totalDiscarded) * 100))
-    })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [activities, isBatch]);
 
   return (
     <div className={styles.mobileContainer}>

@@ -14,7 +14,6 @@ export class KonsumenService {
         instance_id,
         product_instances!inner (
           id,
-          gtin,
           current_status,
           identification_type,
           batch_number,
@@ -60,7 +59,6 @@ export class KonsumenService {
       .from('product_instances')
       .select(`
         id,
-        gtin,
         current_status,
         identification_type,
         batch_number,

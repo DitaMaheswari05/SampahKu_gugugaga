@@ -23,6 +23,10 @@ ALTER TABLE product_instances ADD CONSTRAINT product_instances_product_id_fkey F
 */
 
 -- 2. SEEDER DATA
+-- HAPUS TRIGGER AUTH SECARA PAKSA AGAR TIDAK ERROR
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DO $$
@@ -66,9 +70,9 @@ BEGIN
     DELETE FROM auth.identities WHERE user_id IN (konsumen_id, petugas_id, produsen_id);
     INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
     VALUES
-    (gen_random_uuid(), konsumen_id, format('{"sub":"%s","email":"%s"}', konsumen_id::text, 'konsumen@gmail.com')::jsonb, 'email', konsumen_id, now(), now()),
-    (gen_random_uuid(), petugas_id, format('{"sub":"%s","email":"%s"}', petugas_id::text, 'petugas@gmail.com')::jsonb, 'email', petugas_id, now(), now()),
-    (gen_random_uuid(), produsen_id, format('{"sub":"%s","email":"%s"}', produsen_id::text, 'produsen@gmail.com')::jsonb, 'email', produsen_id, now(), now());
+    (gen_random_uuid(), konsumen_id, format('{"sub":"%s","email":"%s","email_verified":true}', konsumen_id::text, 'konsumen@gmail.com')::jsonb, 'email', konsumen_id, now(), now()),
+    (gen_random_uuid(), petugas_id, format('{"sub":"%s","email":"%s","email_verified":true}', petugas_id::text, 'petugas@gmail.com')::jsonb, 'email', petugas_id, now(), now()),
+    (gen_random_uuid(), produsen_id, format('{"sub":"%s","email":"%s","email_verified":true}', produsen_id::text, 'produsen@gmail.com')::jsonb, 'email', produsen_id, now(), now());
 
     -- Insert ke profiles
     INSERT INTO public.profiles (id, email, name, role, points, created_at)
