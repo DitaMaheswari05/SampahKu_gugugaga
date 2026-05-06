@@ -8,18 +8,32 @@ export class ProductService {
    * Create a new product in the catalogue.
    */
   static async createProduct(brandId: string, payload: {
-    gtin: string;
+    sku: string;
     product_name: string;
     material_passport?: any;
     category?: string;
     weight_grams?: number;
   }) {
-    const { gtin, product_name, material_passport, category, weight_grams } = payload;
+    const { sku, product_name, material_passport, category, weight_grams } = payload;
+
+    // Get brand's gtin_prefix
+    const { data: profile, error: profErr } = await supabase
+      .from('profiles')
+      .select('gtin_prefix')
+      .eq('id', brandId)
+      .single();
+
+    if (profErr || !profile) throw new Error('Brand profile not found');
+    if (!profile.gtin_prefix) throw new Error('Profil Brand ini belum dikonfigurasi dengan gtin_prefix.');
+
+    const itemRef = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit
+    const gtin = `${profile.gtin_prefix}${itemRef}`;
 
     const { data, error } = await supabase
       .from('products')
       .insert([{
         gtin,
+        sku,
         brand_id: brandId,
         product_name,
         material_passport: material_passport || {},

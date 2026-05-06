@@ -325,13 +325,13 @@ const ProductManagement: React.FC = () => {
                           <div className={styles.productIcon}><PackageIcon /></div>
                           <div className={styles.productInfo}>
                             <span className={styles.productName}>{p.product_name}</span>
-                            <span className={styles.productGtin}>{p.gtin}</span>
+                            <span className={styles.productGtin}>{p.sku}</span>
                           </div>
                         </div>
                       </td>
                       <td>
                         <span className={`${styles.badge} ${styles.badgeBlue}`}>
-                          {p.category || 'ΓÇö'}
+                          {p.category || '—'}
                         </span>
                       </td>
                       <td>
@@ -343,13 +343,12 @@ const ProductManagement: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        {p.stats.total > 0 ? (
                           <div>
                             <div className={styles.progressBar}>
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.recycled, p.stats.total), background: '#4caf50' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_progress, p.stats.total), background: '#ff9800' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.disposed, p.stats.total), background: '#f44336' }} />
-                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_market, p.stats.total), background: '#e0e0e0' }} />
+                              <div className={styles.progressSegment} style={{ width: pct(p.stats.recycled, Math.max(p.stats.total, 1)), background: '#4caf50' }} />
+                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_progress, Math.max(p.stats.total, 1)), background: '#ff9800' }} />
+                              <div className={styles.progressSegment} style={{ width: pct(p.stats.disposed, Math.max(p.stats.total, 1)), background: '#f44336' }} />
+                              <div className={styles.progressSegment} style={{ width: pct(p.stats.in_market, Math.max(p.stats.total, 1)), background: '#e0e0e0' }} />
                             </div>
                             <div className={styles.statsBar} style={{ marginTop: '0.35rem' }}>
                               <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotGreen}`} />{p.stats.recycled}</div>
@@ -358,9 +357,6 @@ const ProductManagement: React.FC = () => {
                               <div className={styles.statItem}><span className={`${styles.statDot} ${styles.dotGray}`} />{p.stats.in_market}</div>
                             </div>
                           </div>
-                        ) : (
-                          <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>ΓÇö</span>
-                        )}
                       </td>
                       <td>{formatDate(p.created_at)}</td>
                       <td>
@@ -471,7 +467,7 @@ interface CreateProductModalProps {
 const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCreated }) => {
   const [form, setForm] = useState({
     product_name: '',
-    gtin: '',
+    sku: '',
     category: '',
     weight_grams: '',
   });
@@ -484,8 +480,8 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.product_name || !form.gtin) {
-      setError('Nama Produk dan GTIN wajib diisi');
+    if (!form.product_name || !form.sku) {
+      setError('Nama Produk dan SKU wajib diisi');
       return;
     }
     setSaving(true);
@@ -493,7 +489,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
     try {
       await createProduct({
         product_name: form.product_name,
-        gtin: form.gtin,
+        sku: form.sku,
         category: form.category || undefined,
         weight_grams: form.weight_grams ? parseInt(form.weight_grams, 10) : undefined,
         material_passport: {
@@ -535,13 +531,13 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
           </div>
 
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>GTIN</label>
+            <label className={styles.formLabel}>SKU (Stock Keeping Unit)</label>
             <input
               className={styles.formInput}
-              placeholder="Contoh: 8992753020012"
-              value={form.gtin}
-              onChange={(e) => handleChange('gtin', e.target.value)}
-              id="input-gtin"
+              placeholder="Contoh: BTL-600ML"
+              value={form.sku}
+              onChange={(e) => handleChange('sku', e.target.value)}
+              id="input-sku"
               required
             />
           </div>

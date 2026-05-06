@@ -6,15 +6,15 @@ export const createProduct = async (req: Request, res: Response) => {
     return res.status(403).json({ status: 'error', message: 'Only BRAND can create products' });
   }
 
-  const { gtin, product_name, material_passport, category, weight_grams } = req.body;
+  const { sku, product_name, material_passport, category, weight_grams } = req.body;
 
-  if (!gtin || !product_name) {
-    return res.status(400).json({ status: 'error', message: 'gtin and product_name are required' });
+  if (!sku || !product_name) {
+    return res.status(400).json({ status: 'error', message: 'sku and product_name are required' });
   }
 
   try {
     const product = await ProductService.createProduct(req.profile.id, {
-      gtin,
+      sku,
       product_name,
       material_passport,
       category,

@@ -30,8 +30,13 @@ async function createUsers() {
     console.log(`SUCCESS: ID = ${user.id}`);
 
     // Create profile
+    const profileData: any = { id: user.id, email: u.email, name: u.name, role: u.role, points: 0 };
+    if (u.role === 'BRAND') {
+      profileData.gtin_prefix = '899129'; // Default GTIN prefix
+    }
+
     const { error: pErr } = await supabase.from('profiles').upsert([
-      { id: user.id, email: u.email, name: u.name, role: u.role, points: 0 }
+      profileData
     ], { onConflict: 'id' });
 
     if (pErr) {

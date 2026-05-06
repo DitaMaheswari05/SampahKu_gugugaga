@@ -192,6 +192,7 @@ email        text UNIQUE NOT NULL
 name         text NOT NULL
 role         text CHECK (role IN ('KONSUMEN', 'PETUGAS', 'BRAND'))
 points       integer DEFAULT 0    -- total poin akumulasi
+gtin_prefix  varchar(10)          -- (Hanya untuk BRAND) Prefix GS1 perusahaan
 created_at   timestamptz
 ```
 
@@ -199,7 +200,8 @@ created_at   timestamptz
 Katalog produk yang didaftarkan oleh BRAND.
 ```sql
 id               uuid PK      -- ID produk internal
-gtin             varchar      -- Global Trade Item Number (standar GS1)
+gtin             varchar UNIQUE -- Global Trade Item Number (gtin_prefix + sku)
+sku              varchar      -- Stock Keeping Unit (diinput oleh brand)
 brand_id         uuid FK → profiles.id
 product_name     text NOT NULL
 material_passport jsonb NOT NULL  -- JSON-LD: komposisi material, recycling info, DPP data

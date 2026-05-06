@@ -144,6 +144,9 @@ export default function DetailSampah() {
 
     const stepMap: Record<string, { count: number; locations: Record<string, number> }> = {};
     activities.forEach((a: any) => {
+      // Filter out commissioning as requested
+      if (a.biz_step === 'commissioning') return;
+
       if (!stepMap[a.biz_step]) stepMap[a.biz_step] = { count: 0, locations: {} };
       stepMap[a.biz_step].count += 1;
       const loc = a.location_name || 'Tidak diketahui';
@@ -244,6 +247,7 @@ export default function DetailSampah() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {Object.entries(statusCounts)
                   .sort(([, a], [, b]) => b - a)
+                  .filter(([status]) => status !== 'IN_MARKET')
                   .map(([status, count]) => (
                     <StatusChip key={status} status={status} count={count} total={totalBatchItems} />
                   ))}
@@ -335,8 +339,10 @@ export default function DetailSampah() {
               </p>
             ) : (
               <div className={styles.timelineList}>
-                {activities.map((event: any) => (
-                  <div className={styles.timelineItem} key={event.id}>
+                {activities
+                  .filter((event: any) => event.biz_step !== 'commissioning')
+                  .map((event: any) => (
+                    <div className={styles.timelineItem} key={event.id}>
                     <div className={styles.timelineIcon}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
