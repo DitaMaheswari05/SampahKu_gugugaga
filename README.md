@@ -216,6 +216,5 @@ npm start
 
 * Backend berjalan di: `http://localhost:5000`
 * Frontend berjalan di: `http://localhost:3000`
-* Pastikan CORS aktif di backend agar frontend dapat mengakses API
-
+* Link deploy: `https://sampahku-one.vercel.app/`
 ---
