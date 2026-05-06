@@ -12,7 +12,6 @@ import {
 import Header from '../components/Header';
 import styles from '../styles/ProductManagement.module.css';
 
-// ΓöÇΓöÇΓöÇ Status helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 const STATUS_LABELS: Record<string, string> = {
   IN_MARKET: 'Di Pasaran',
   DISCARDED: 'Dibuang',
@@ -146,7 +145,7 @@ function renderInstanceCards(
   return nodes;
 }
 
-// ΓöÇΓöÇΓöÇ Icons (inline SVG) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+//  Icons (inline SVG)
 const PlusIcon = () => (
   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24">
     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -192,7 +191,7 @@ const DownloadIcon = () => (
   </svg>
 );
 
-// ΓöÇΓöÇΓöÇ Main Component ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+//  Main Component
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -413,7 +412,7 @@ const ProductManagement: React.FC = () => {
         )}
       </div>
 
-      {/* ΓöÇΓöÇΓöÇ Modal: Create Product ΓöÇΓöÇΓöÇ */}
+      {/*  Modal: Create Product  */}
       {showCreateProduct && (
         <CreateProductModal
           onClose={() => setShowCreateProduct(false)}
@@ -421,7 +420,7 @@ const ProductManagement: React.FC = () => {
         />
       )}
 
-      {/* ΓöÇΓöÇΓöÇ Modal: Create Instance ΓöÇΓöÇΓöÇ */}
+      {/*  Modal: Create Instance*/}
       {showCreateInstance && (
         <CreateInstanceModal
           gtin={showCreateInstance}
@@ -438,12 +437,12 @@ const ProductManagement: React.FC = () => {
         />
       )}
 
-      {/* ΓöÇΓöÇΓöÇ Modal: QR Display ΓöÇΓöÇΓöÇ */}
+      {/*Modal: QR Display*/}
       {showQR && (
         <div className={styles.modalOverlay} onClick={() => setShowQR(null)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>QR Code ΓÇö GS1 Digital Link</h2>
+              <h2 className={styles.modalTitle}>QR Code - GS1 Digital Link</h2>
               <button className={styles.modalClose} onClick={() => setShowQR(null)}><CloseIcon /></button>
             </div>
             <div className={styles.qrContent}>
@@ -463,7 +462,7 @@ const ProductManagement: React.FC = () => {
   );
 };
 
-// ΓöÇΓöÇΓöÇ Create Product Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Create Product Modal
 interface CreateProductModalProps {
   onClose: () => void;
   onCreated: () => void;
@@ -591,7 +590,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
   );
 };
 
-// ΓöÇΓöÇΓöÇ Create Instance Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+//  Create Instance Modal
 interface CreateInstanceModalProps {
   gtin: string;
   onClose: () => void;
