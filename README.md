@@ -418,10 +418,6 @@ https://sampahku-one.vercel.app/
 * Backend berjalan di: `http://localhost:5000`
 * Frontend berjalan di: `http://localhost:3000`
 * Link deploy: `https://sampahku-one.vercel.app/`
-* Database yang digunakan adalah Supabase.
-* QR Scanner menggunakan library `html5-qrcode`.
 * Autentikasi Google digunakan khusus untuk konsumen.
-* Jika pengguna login menggunakan akun Google, pengguna akan langsung diarahkan ke dashboard konsumen.
-* Fitur login menggunakan Google hanya tersedia untuk aplikasi Android.
-* Autentikasi Google belum tersedia untuk role selain konsumen.
+* Fitur login menggunakan Google hanya tersedia untuk Android.
 * Pastikan backend dan frontend berjalan bersamaan agar aplikasi dapat digunakan secara lokal.
