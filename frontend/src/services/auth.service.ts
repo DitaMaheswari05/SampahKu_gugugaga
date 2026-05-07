@@ -63,6 +63,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 // Integrasi Login Google via Backend API
 export const loginWithGoogle = async () => {
   const redirectTo = encodeURIComponent(`${window.location.origin}/login`);
+  window.location.href = `https://sampahku-one.vercel.app/api/auth/google?redirectTo=${redirectTo}`;
   const response = await fetch(`${API_URL}/auth/google?redirectTo=${redirectTo}`);
   const data = await response.json();
 
