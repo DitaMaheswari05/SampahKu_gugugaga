@@ -1,396 +1,632 @@
-/* AdminTpsDashboard.module.css */
-
-.page {
+.mobileContainer {
+  width: 100%;
+  max-width: 430px;
   min-height: 100vh;
-  background: var(--bg, #f5f5f0);
+  background-color: #EDF4E6;
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #FFFFFF;
+  border-bottom: 0.75px solid #D1D5DC;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logoArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(90deg, #4C9100 0%, #91C851 100%);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+.logoText {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  background: linear-gradient(90deg, #4C9100 0%, #91C851 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notificationBox {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.notifBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #D4183D;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.profileBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profileName {
   font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: #364153;
+  display: none; /* Hide on very small screens, or we can leave it */
+}
+
+@media (min-width: 360px) {
+  .profileName {
+    display: block;
+  }
 }
 
 .content {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 20px 16px 40px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
 }
 
-.errorBanner {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
+/* Dashboard Header Text */
+.dashboardTitleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboardTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  color: #101828;
+  margin: 0;
+}
+
+.dashboardTitle span {
+  color: #4C9100;
+}
+
+.dashboardSubtitle {
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: #737373;
+  margin: 0;
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #4C9100;
+  color: #FFFFFF;
+  border: none;
   border-radius: 12px;
   padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 8px;
+  cursor: pointer;
 }
 
-/* ── Register TPS Form ── */
-
-.registerCard {
-  background: var(--surface, #fff);
-  border-radius: 16px;
-  padding: 28px 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+/* Horizontal Info Cards (Lokasi, Jangkauan, Tahapan) */
+.infoScrollWrapper {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Membagi 3 kolom sama rata */
+  gap: 8px;
+  width: 100%;
 }
 
-.registerTitle {
-  font-size: 20px;
+.infoCard {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 10px 8px; /* Padding dikurangi agar lebih lega */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden; /* Mencegah konten luber */
+}
+
+.infoHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.infoTitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 10px; /* Ukuran disesuaikan */
+  color: #4A5565;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Maksimal 2 baris jika teks panjang */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.infoIconBox {
+  width: 24px;
+  height: 24px;
+  background: #91C851;
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Memaksa SVG di dalam icon box mengecil */
+.infoIconBox svg {
+  width: 14px;
+  height: 14px;
+}
+
+.infoValue {
+  font-family: 'Poppins', sans-serif;
   font-weight: 700;
-  color: var(--text-main, #1b2a1b);
-  margin-bottom: 4px;
+  font-size: 14px; /* Ukuran font di-scale down */
+  color: #000000;
+  margin: 0;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
-.registerSubtitle {
-  font-size: 13px;
-  color: var(--text-muted, #888);
-  margin-bottom: 24px;
+.infoSubText {
+  font-family: 'Poppins', sans-serif;
+  font-size: 9px;
+  color: #737373;
+  margin: 2px 0 0 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.form {
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 8px; /* Ukuran badge diperkecil */
+  white-space: nowrap;
+}
+.badge.Dipilah { background: #FEF9C2; color: #DDB507; }
+.badge.Diproses { background: #CCE0FF; color: #155DFC; }
+.badge.Lainnya { background: #E0E7FF; color: #4338CA; }
+
+/* Stats Grid (2x2) */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.statCard {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.statTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #737373;
+  line-height: 1.2;
+}
+
+.statIconBox {
+  width: 32px;
+  height: 32px;
+  background: #91C851;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+.statValue {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #000000;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.statTrend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  color: #91C851;
+}
+
+/* Donut Charts Area */
+.chartCard {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.formField {
+.chartTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #101828;
+  margin: 0;
+  text-align: center;
+}
+
+.donutContainer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 16px;
 }
 
-.formLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-main, #1b2a1b);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.donutWrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
 }
 
-.formInput,
-.formSelect,
-.formTextarea {
-  padding: 10px 14px;
-  border: 1.5px solid var(--border-color, #e5e7eb);
-  border-radius: 10px;
-  font-size: 14px;
+.donutStage, .donutCategory {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: absolute;
+  top: 0; left: 0;
+}
+
+.donutStage {
+  background: conic-gradient(
+    #10B981 0% 42%, 
+    #3B82F6 42% 70%, 
+    #FD9D24 70% 88%, 
+    #8B5CF6 88% 100%
+  );
+}
+
+.donutCategory {
+  background: conic-gradient(
+    #10B981 0% 42%, 
+    #3B82F6 42% 70%, 
+    #FD9D24 70% 88%, 
+    #8B5CF6 88% 100%
+  );
+}
+
+.donutCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px;
+  height: 90px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   font-family: 'Poppins', sans-serif;
-  color: var(--text-main, #1b2a1b);
-  background: var(--surface, #fff);
-  transition: border-color 0.2s;
+  font-weight: 600;
+  font-size: 11px;
+  padding: 10px;
 }
 
-.formInput:focus,
-.formSelect:focus,
-.formTextarea:focus {
-  outline: none;
-  border-color: var(--primary, #4caf50);
-}
-
-.formTextarea {
-  min-height: 60px;
-  resize: vertical;
-}
-
-.coordRow {
+.legendGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  width: 100%;
 }
 
-.checkboxGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.checkboxLabel {
+.legendItem {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: var(--text-main, #1b2a1b);
-  padding: 6px 12px;
-  border: 1.5px solid var(--border-color, #e5e7eb);
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.checkboxLabel input {
-  display: none;
-}
-
-.checkboxActive {
-  background: var(--primary, #4caf50);
-  color: #fff;
-  border-color: var(--primary, #4caf50);
-}
-
-.submitBtn {
-  padding: 12px;
-  border: none;
-  border-radius: 12px;
-  background: var(--primary, #4caf50);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  margin-top: 8px;
-}
-
-.submitBtn:hover {
-  opacity: 0.9;
-}
-
-.submitBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── TPS Info Card ── */
-
-.tpsCard {
-  background: var(--surface, #fff);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  margin-bottom: 16px;
-}
-
-.tpsHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.tpsName {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-main, #1b2a1b);
-  margin-bottom: 2px;
-}
-
-.tpsType {
-  display: inline-block;
+  font-family: 'Inter', sans-serif;
   font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: #e8f5e9;
-  color: #2e7d32;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
-.tpsInfo {
+.legendColor {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Leaderboard Table Area */
+.tableCard {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.tableHeader {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #101828;
+  margin: 0 0 16px 0;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+
+.table {
+  width: 100%;
+  min-width: 400px;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 8px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #364153;
+  border-bottom: 2px solid #E5E7EB;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #F3F4F6;
+  vertical-align: middle;
+}
+
+.rankBadge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  background: #FD9D24;
+  color: white;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.productName {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #101828;
+}
+
+.productGtin {
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  color: #4A5565;
+  background: #F9FAFB;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.productTotal {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #101828;
+}
+
+.trendBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  min-width: 45px;
+}
+
+.trendBadge.up { background: #DCFCE7; color: #008236; }
+.trendBadge.down { background: #FFE2E2; color: #C10007; }
+
+/* Petugas Management */
+.petugasCard {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
-.tpsInfoRow {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  font-size: 13px;
-  color: var(--text-muted, #666);
-}
-
-.tpsInfoRow svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--primary, #4caf50);
-}
-
-.actionBadges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.actionBadge {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 16px;
-  background: #fff3e0;
-  color: #e65100;
-}
-
-/* ── Petugas Section ── */
-
-.petugasSection {
-  background: var(--surface, #fff);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-}
-
-.petugasSectionHeader {
+.petugasHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
-.sectionTitle {
-  font-size: 16px;
+.petugasTitle {
+  font-family: 'Poppins', sans-serif;
   font-weight: 700;
-  color: var(--text-main, #1b2a1b);
+  font-size: 16px;
+  color: #101828;
+  margin: 0;
 }
 
 .addPetugasBtn {
+  background: #4C9100;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 10px;
-  background: var(--primary, #4caf50);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
   cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.addPetugasBtn:hover {
-  opacity: 0.9;
 }
 
 .petugasList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .petugasItem {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  background: var(--bg, #f5f5f0);
-  border-radius: 12px;
+}
+
+.petugasInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .petugasInfo h4 {
-  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
   font-weight: 600;
-  color: var(--text-main, #1b2a1b);
-  margin-bottom: 2px;
+  font-size: 13px;
+  color: #101828;
+  margin: 0;
 }
 
 .petugasInfo p {
-  font-size: 12px;
-  color: var(--text-muted, #888);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: #737373;
+  margin: 0;
 }
 
 .petugasDate {
-  font-size: 11px;
-  color: var(--text-muted, #aaa);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: #A0AEC0;
 }
 
-.emptyState {
-  text-align: center;
-  padding: 24px;
-  color: var(--text-muted, #aaa);
-  font-size: 13px;
-}
-
-/* ── Modal ── */
-
+/* Modal and Forms */
 .modalOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  padding: 16px;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+  z-index: 1000; padding: 16px;
 }
-
 .modalCard {
-  background: var(--surface, #fff);
-  border-radius: 16px;
-  padding: 28px 24px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  animation: slideUp 0.25s ease;
+  background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 360px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.modalHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modalTitle { font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #101828; margin: 0; }
+.modalCloseBtn { background: none; border: none; font-size: 20px; cursor: pointer; color: #737373; }
+.formField { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.formLabel { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #4A5565; }
+.formInput, .formSelect, .formTextarea {
+  padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; font-size: 13px;
 }
+.formInput:focus { border-color: #4C9100; outline: none; }
+.modalActions { display: flex; gap: 8px; margin-top: 16px; }
+.btnCancel { flex: 1; padding: 10px; background: transparent; border: 1px solid #D1D5DB; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.submitBtn { flex: 1; padding: 10px; background: #4C9100; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 13px; }
+.submitBtn:disabled { opacity: 0.6; }
+.errorBanner { background: #FEE2E2; color: #991B1B; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; text-align: center; }
 
-.modalHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.modalTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-main, #1b2a1b);
-}
-
-.modalCloseBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted, #888);
-  padding: 4px;
-}
-
-.modalActions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.modalActions button {
-  flex: 1;
-}
-
-.btnCancel {
-  padding: 10px;
-  border: 1.5px solid var(--border-color, #e5e7eb);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-main, #1b2a1b);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  cursor: pointer;
-}
-
-.btnCancel:hover {
-  background: var(--bg, #f5f5f0);
-}
-
+/* Empty state layout fixes */
 .loadingContainer {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 60px 0;
-  color: var(--text-muted, #888);
-  font-size: 14px;
+  height: 100vh;
+  color: #4C9100;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
 }
