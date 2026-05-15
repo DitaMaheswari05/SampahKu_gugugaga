@@ -242,7 +242,6 @@ const Home: React.FC = () => {
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Nama TPS/TPA</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Lokasi</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Tipe</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Volume (ton/hari)</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Total Update</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Tahap (%)</th>
                 </tr>
@@ -266,7 +265,6 @@ const Home: React.FC = () => {
                         color: '#2e7d32',
                       }}>{t.type}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600 }}>{t.capacity_tons_per_day}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600 }}>{t.total_updates.toLocaleString()}</td>
                     <td style={{ padding: '12px 16px' }}>
                       {t.stages && Object.keys(t.stages).length > 0 ? (

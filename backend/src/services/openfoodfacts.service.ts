@@ -7,6 +7,7 @@ export interface OFFProductData {
   code: string; // GTIN
   product_name?: string;
   generic_name?: string;
+  brands?: string;
   categories_tags?: string[];
   packaging?: any;
   nutriscore_grade?: string;
@@ -50,14 +51,38 @@ export class OpenFoodFactsService {
         return null;
       }
 
+      // OFF stores names in localized fields — try all candidates
+      const productName = product.product_name
+        || product.product_name_id   // Indonesian name
+        || product.product_name_en   // English name
+        || product.abbreviated_product_name
+        || product.generic_name
+        || product.generic_name_id
+        || product.generic_name_en
+        || undefined;
+
+      const genericName = product.generic_name
+        || product.generic_name_id
+        || product.generic_name_en
+        || undefined;
+
+      const brands = product.brands || undefined;
+
+      // Compose a meaningful display name if the bare product_name is empty
+      let displayName = productName;
+      if (!displayName && brands) {
+        displayName = brands;
+      }
+
       return {
         code: product.code,
-        product_name: product.product_name || product.generic_name || undefined,
-        generic_name: product.generic_name || undefined,
+        product_name: displayName,
+        generic_name: genericName,
+        brands,
         categories_tags: product.categories_tags || [],
         packaging: product.packaging || null,
         nutriscore_grade: product.nutriscore_grade || undefined,
-        image_url: product.image_url || undefined,
+        image_url: product.image_url || product.image_front_url || product.image_front_small_url || undefined,
       };
     } catch (error) {
       const axErr = error as AxiosError;
@@ -81,6 +106,7 @@ export class OpenFoodFactsService {
       off_code: offData.code,
       product_name: offData.product_name || 'Unknown Product',
       generic_name: offData.generic_name || null,
+      brands: offData.brands || null,
       categories: offData.categories_tags || [],
       packaging_info: offData.packaging || {},
       nutriscore_grade: offData.nutriscore_grade || null,

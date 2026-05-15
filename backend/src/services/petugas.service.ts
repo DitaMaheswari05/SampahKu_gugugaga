@@ -37,6 +37,7 @@ export type PetugasDashboardData = {
     title: string;
     date: string;
     location: string;
+    gtin?: string;
   }>;
 };
 
@@ -67,18 +68,6 @@ export class PetugasService {
       }
     }
 
-    // Fetch recent activities (no points query)
-    const { data: activities, error: activitiesError, count } = await supabase
-      .from('activities')
-      .select('id, biz_step, location_name, timestamp', { count: 'exact' })
-      .eq('actor_id', userId)
-      .order('timestamp', { ascending: false })
-      .limit(5);
-
-    if (activitiesError) {
-      throw activitiesError;
-    }
-
     // Compute TPS-level stage stats (% per biz_step) via activities.tps_id
     let tpsStages: Record<string, number> = {};
     if (profile.tps_id) {
@@ -100,6 +89,57 @@ export class PetugasService {
       }
     }
 
+    // Fetch recent activities (basic fields)
+    const { data: activities, error: activitiesError, count } = await supabase
+      .from('activities')
+      .select('id, biz_step, location_name, timestamp, instance_id, gtin', { count: 'exact' })
+      .eq('actor_id', userId)
+      .order('timestamp', { ascending: false })
+      .limit(5);
+
+    if (activitiesError) throw activitiesError;
+
+    // Resolve product info for each activity (Tier 1 via instance_id, Tier 2 via gtin)
+    const resolvedActivities = await Promise.all(
+      (activities || []).map(async (activity) => {
+        let productName = '';
+        let finalGtin = activity.gtin || '';
+
+        if (activity.instance_id) {
+          const { data: inst } = await supabase
+            .from('product_instances')
+            .select('product_id, products(gtin, product_name)')
+            .eq('id', activity.instance_id)
+            .single();
+
+          if (inst) {
+            const prod = inst.products as any;
+            productName = prod?.product_name || '';
+            finalGtin = prod?.gtin || finalGtin;
+          }
+        } else if (activity.gtin) {
+          const { data: prod } = await supabase
+            .from('products')
+            .select('product_name')
+            .eq('gtin', activity.gtin)
+            .single();
+
+          if (prod) {
+            productName = prod.product_name;
+          }
+        }
+
+        return {
+          id: activity.id,
+          title: productName || `${BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}`,
+          gtin: finalGtin || '-',
+          biz_step: BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step,
+          date: new Date(activity.timestamp).toISOString().slice(0, 10),
+          location: activity.location_name || '-',
+        };
+      })
+    );
+
     return {
       profile: {
         id: profile.id,
@@ -109,15 +149,10 @@ export class PetugasService {
       },
       tps,
       summary: {
-        totalUpdates: count || activities?.length || 0,
+        totalUpdates: count || resolvedActivities.length,
       },
       tps_stages: tpsStages,
-      activities: (activities || []).map((activity) => ({
-        id: activity.id,
-        title: `Memperbarui status: ${BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}`,
-        date: new Date(activity.timestamp).toISOString().slice(0, 10),
-        location: activity.location_name || '-',
-      })),
+      activities: resolvedActivities,
     };
   }
 }

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import styles from '../styles/PetugasDashboard.module.css';
-import { getPetugasDashboard } from '../services/petugas.service';
+import { getPetugasDashboard, PetugasActivityItem } from '../services/petugas.service';
 
 const PetugasDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const PetugasDashboard: React.FC = () => {
     updatesThisWeek: 0,
   });
   
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<PetugasActivityItem[]>([]);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -38,7 +38,7 @@ const PetugasDashboard: React.FC = () => {
         let weekCount = 0;
 
         // Map data dari API ke format UI dan hitung statistik mingguan/harian
-        const mappedActivities = (data.activities || []).map((act: any) => {
+        const mappedActivities = (data.activities || []).map((act: any): PetugasActivityItem => {
            // Fallback membaca 'date' (dari interface) atau 'timestamp' (dari schema DB EPCIS)
            const actDate = new Date(act.date || act.timestamp); 
            
@@ -51,10 +51,9 @@ const PetugasDashboard: React.FC = () => {
 
            return {
              id: act.id,
-             // Menyesuaikan interface BE: bisa mengembalikan 'title' atau 'name' (hasil join product_instances -> products)
-             name: act.title || act.name || 'Produk Tidak Diketahui',
-             // Fallback GTIN/Identifier 
-             gtin: act.gtin || act.location || '-', 
+             title: act.title || act.name || 'Produk Tidak Diketahui',
+             location: act.location || act.location_name || '-',
+             gtin: act.gtin || '-',
              date: actDate.toLocaleDateString('id-ID', {
                 year: 'numeric', month: 'short', day: 'numeric'
              })
@@ -190,7 +189,7 @@ const PetugasDashboard: React.FC = () => {
                             </svg>
                         </div>
                         <div className={styles.itemDetails}>
-                            <h3 className={styles.itemName}>{item.name}</h3>
+                            <h3 className={styles.itemName}>{item.title}</h3>
                             <div className={styles.itemMeta}>
                                 <span className={styles.gtinText}>GTIN: {item.gtin}</span>
                                 <span className={styles.dot}>•</span>

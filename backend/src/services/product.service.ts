@@ -370,7 +370,39 @@ export class ProductService {
       .eq('gtin', cleanGtin)
       .single();
 
+    // If existing product has a meaningful name, return it directly
     if (existingProduct) {
+      const hasGoodName = existingProduct.product_name
+        && existingProduct.product_name !== 'Unknown Product'
+        && existingProduct.product_name !== cleanGtin
+        && !/^\d{8,14}$/.test(existingProduct.product_name);
+
+      if (hasGoodName) {
+        return existingProduct;
+      }
+
+      // Existing product has a GTIN-like or placeholder name — try to enrich from OFF
+      const offData = await OpenFoodFactsService.fetchProductByGtin(cleanGtin);
+      if (offData) {
+        const displayName = this.composeDisplayName(offData);
+        const materialPassport = OpenFoodFactsService.mapToMaterialPassport(offData);
+        const categoryName = (offData.categories_tags && offData.categories_tags[0]) || existingProduct.category || 'Unknown';
+
+        const { data: updated } = await supabase
+          .from('products')
+          .update({
+            product_name: displayName,
+            material_passport: materialPassport,
+            category: categoryName,
+            off_last_synced_at: new Date().toISOString(),
+          })
+          .eq('id', existingProduct.id)
+          .select()
+          .single();
+
+        return updated || existingProduct;
+      }
+
       return existingProduct;
     }
 
@@ -379,6 +411,7 @@ export class ProductService {
 
     if (offData) {
       // Create product from OFF data
+      const displayName = this.composeDisplayName(offData);
       const materialPassport = OpenFoodFactsService.mapToMaterialPassport(offData);
       const categoryName = (offData.categories_tags && offData.categories_tags[0]) || 'Unknown';
 
@@ -388,7 +421,7 @@ export class ProductService {
           gtin: cleanGtin,
           sku: null,
           brand_id: null, // OFF products have no brand ownership
-          product_name: offData.product_name || 'Unknown Product',
+          product_name: displayName,
           material_passport: materialPassport,
           category: categoryName,
           weight_grams: null,
@@ -423,5 +456,25 @@ export class ProductService {
 
     if (fallbackErr) throw fallbackErr;
     return fallbackProduct;
+  }
+
+  /**
+   * Compose a display-friendly product name from OFF data.
+   * Tries product_name first, appends brand if available.
+   * e.g. "Pure Life" + "Nestlé" → "Pure Life - Nestlé"
+   */
+  private static composeDisplayName(offData: { product_name?: string; brands?: string; generic_name?: string }): string {
+    const name = offData.product_name || offData.generic_name || '';
+    const brand = offData.brands || '';
+
+    if (name && brand) {
+      // Avoid duplication if brand is already in the name
+      if (name.toLowerCase().includes(brand.toLowerCase())) {
+        return name;
+      }
+      return `${name} - ${brand}`;
+    }
+
+    return name || brand || 'Unknown Product';
   }
 }

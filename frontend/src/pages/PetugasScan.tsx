@@ -594,9 +594,6 @@ export default function PetugasScan() {
           {step === 'preview' && scanType === 'TIER_2' && scannedGtin && (
             <>
               <div className={styles.infoContainer} style={{ marginBottom: '10px' }}>
-                <div style={{ background: '#f3e5f5', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '12px', color: '#6a1b9a', fontWeight: 600, fontFamily: "'Poppins', sans-serif" }}>
-                  📊 Tier 2 - Barcode Agregat
-                </div>
 
                 {/* Product image from OFF */}
                 {resolvedProduct?.image_url && (
@@ -630,9 +627,6 @@ export default function PetugasScan() {
                       {resolvedProduct?.source === 'OFF_AUTO' ? '🌐 Open Food Facts' : resolvedProduct?.source === 'BRAND_MANUAL' ? '🏭 Brand Terdaftar' : '—'}
                     </span>
                   </div>
-                </div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', fontStyle: 'italic' }}>
-                  📌 Scan agregat untuk semua unit dengan barcode ini
                 </div>
               </div>
 

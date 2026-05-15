@@ -73,8 +73,6 @@ export interface DashboardTopProduct {
 export interface AdminTpsDashboardData {
   tps: TpsData;
   stats: {
-    volume_label: string;
-    volume_grams: number;
     total_waste: number;
     today: number;
     this_week: number;

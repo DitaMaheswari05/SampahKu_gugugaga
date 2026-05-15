@@ -21,6 +21,8 @@ export interface PetugasActivityItem {
   title: string;
   date: string;
   location: string;
+  gtin?: string;
+  biz_step?: string;
 }
 
 export interface PetugasDashboardData {
