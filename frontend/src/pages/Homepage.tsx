@@ -8,6 +8,9 @@ const Home: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [tpsList, setTpsList] = useState<PublicTpsItem[]>([]);
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('');
+
   // Efek untuk mengaktifkan smooth scroll secara global
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
@@ -31,6 +34,15 @@ const Home: React.FC = () => {
     }
     return num.toString();
   };
+
+  const filteredTpsList = tpsList.filter((t) => {
+    const matchesSearch = 
+      (t.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (t.city?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (t.province?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    const matchesType = filterType ? t.type === filterType : true;
+    return matchesSearch && matchesType;
+  });
 
   return (
     <div className={styles.mobileContainer} id="beranda">
@@ -163,7 +175,8 @@ const Home: React.FC = () => {
           <div className={styles.step}>
             <div className={styles.stepNumber}>2</div>
             <h3>Lacak Perjalanan</h3>
-            <p>Pantau status dan lokasi sampah di setiap tahap pengelolaan secara transparan</p>           </div>
+            <p>Pantau status dan lokasi sampah di setiap tahap pengelolaan secara transparan</p>           
+            </div>
           <div className={styles.step}>
             <div className={styles.stepNumber}>3</div>
             <h3>Dapatkan Reward</h3>
@@ -175,11 +188,41 @@ const Home: React.FC = () => {
       {/* TPS Directory Section */}
       {tpsList.length > 0 && (
         <section id="tps-directory" className={styles.section}>
-          <div className={styles.sectionTag}>JARINGAN TPS</div>
-          <h2 className={styles.sectionTitle}>Direktori TPS Terdaftar</h2>
-          <p className={styles.sectionSubtitle}>
-            Daftar TPS yang terdaftar di platform SampahKu
-          </p>
+          {/* TAMBAHAN: Detail Informasi (Search & Filter) */}
+          <div className={styles.detailInfoContainer}>
+            <h2 className={styles.detailInfoTitle}>DETAIL INFORMASI</h2>
+            <div className={styles.filterWrapper}>
+              <div className={styles.searchBox}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#99A1AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input 
+                  type="text" 
+                  placeholder="Cari TPS/TPA, kota, atau provinsi..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={styles.searchInput}
+                />
+              </div>
+              <div className={styles.dropdownBox}>
+                <select 
+                  value={filterType} 
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className={styles.selectInput}
+                >
+                  <option value="">Semua Tipe</option>
+                  <option value="TPS">TPS</option>
+                  <option value="TPS3R">TPS3R</option>
+                  <option value="BANK_SAMPAH">BANK_SAMPAH</option>
+                  <option value="TPST">TPST</option>
+                  <option value="TPA">TPA</option>
+                  <option value="PENGEPUL">PENGEPUL</option>
+                  <option value="RECYCLER">RECYCLER</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
           <div style={{
             overflowX: 'auto',
@@ -205,12 +248,13 @@ const Home: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {tpsList.map((t) => (
+
+                {filteredTpsList.map((t) => (
                   <tr key={t.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '12px 16px', fontWeight: 500, color: '#1f2937' }}>{t.name}</td>
                     <td style={{ padding: '12px 16px', color: '#6b7280' }}>
                       <div style={{ fontWeight: 500, color: '#1f2937' }}>{t.city || '-'}</div>
-                      <div style={{ fontSize: '11px' }}>{t.province || ''}</div>
+                      <div style={{ fontSize: '8px' }}>{t.province || ''}</div>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
