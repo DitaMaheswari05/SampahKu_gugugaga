@@ -5,7 +5,7 @@ const BIZ_STEP_LABELS: Record<string, string> = {
   receiving: 'Diterima',
   inspecting: 'Dipilah',
   shipping: 'Diproses',
-  recycling: 'Didaur Ulang',
+  recycling: 'Didaur ulang',
   disposing: 'Dibuang',
   discarding: 'Dibuang',
   commissioning: 'Terkumpul',
@@ -23,11 +23,15 @@ export type PetugasDashboardData = {
     name: string;
     type: string;
     address: string;
+    city: string | null;
+    province: string | null;
+    capacity_tons_per_day: number;
     allowed_actions: string[];
   } | null;
   summary: {
     totalUpdates: number;
   };
+  tps_stages: Record<string, number>; // biz_step → percentage (for this TPS)
   activities: Array<{
     id: string;
     title: string;
@@ -54,7 +58,7 @@ export class PetugasService {
     if (profile.tps_id) {
       const { data: tpsData } = await supabase
         .from('tps_facilities')
-        .select('id, name, type, address, allowed_actions')
+        .select('id, name, type, address, city, province, capacity_tons_per_day, allowed_actions')
         .eq('id', profile.tps_id)
         .single();
 
@@ -75,6 +79,27 @@ export class PetugasService {
       throw activitiesError;
     }
 
+    // Compute TPS-level stage stats (% per biz_step) via activities.tps_id
+    let tpsStages: Record<string, number> = {};
+    if (profile.tps_id) {
+      const { data: tpsActivities, error: tpsActErr } = await supabase
+        .from('activities')
+        .select('biz_step')
+        .eq('tps_id', profile.tps_id);
+
+      if (!tpsActErr && tpsActivities && tpsActivities.length > 0) {
+        const stepCounts: Record<string, number> = {};
+        for (const act of tpsActivities) {
+          const label = BIZ_STEP_LABELS[act.biz_step] || act.biz_step;
+          stepCounts[label] = (stepCounts[label] || 0) + 1;
+        }
+        const total = tpsActivities.length;
+        for (const [label, count] of Object.entries(stepCounts)) {
+          tpsStages[label] = Math.round((count / total) * 100);
+        }
+      }
+    }
+
     return {
       profile: {
         id: profile.id,
@@ -86,6 +111,7 @@ export class PetugasService {
       summary: {
         totalUpdates: count || activities?.length || 0,
       },
+      tps_stages: tpsStages,
       activities: (activities || []).map((activity) => ({
         id: activity.id,
         title: `Memperbarui status: ${BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}`,

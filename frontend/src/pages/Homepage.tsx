@@ -196,17 +196,22 @@ const Home: React.FC = () => {
             }}>
               <thead>
                 <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Nama TPS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Nama TPS/TPA</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Lokasi</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Tipe</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Alamat</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Petugas</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Recovery</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Volume (ton/hari)</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Total Update</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Tahap (%)</th>
                 </tr>
               </thead>
               <tbody>
                 {tpsList.map((t) => (
                   <tr key={t.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '12px 16px', fontWeight: 500, color: '#1f2937' }}>{t.name}</td>
+                    <td style={{ padding: '12px 16px', color: '#6b7280' }}>
+                      <div style={{ fontWeight: 500, color: '#1f2937' }}>{t.city || '-'}</div>
+                      <div style={{ fontSize: '11px' }}>{t.province || ''}</div>
+                    </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
                         fontSize: '11px',
@@ -217,9 +222,26 @@ const Home: React.FC = () => {
                         color: '#2e7d32',
                       }}>{t.type}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.address}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>{t.petugas_count}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: t.recovery_rate > 50 ? '#16a34a' : '#f59e0b' }}>{t.recovery_rate}%</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600 }}>{t.capacity_tons_per_day}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600 }}>{t.total_updates.toLocaleString()}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {t.stages && Object.keys(t.stages).length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {Object.entries(t.stages).map(([label, pct]) => (
+                            <span key={label} style={{
+                              fontSize: '10px',
+                              fontWeight: 600,
+                              padding: '2px 6px',
+                              borderRadius: '8px',
+                              background: label === 'recycling' ? '#dcfce7' : label === 'disposing' ? '#fef9c3' : '#e0f2fe',
+                              color: label === 'recycling' ? '#15803d' : label === 'disposing' ? '#a16207' : '#0369a1',
+                            }}>{label} : {pct}%</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>Belum ada data</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

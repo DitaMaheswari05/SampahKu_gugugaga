@@ -35,11 +35,15 @@ export interface PetugasDashboardData {
     name: string;
     type: string;
     address: string;
+    city: string | null;
+    province: string | null;
+    capacity_tons_per_day: number;
     allowed_actions: string[];
   } | null;
   summary: {
     totalUpdates: number;
   };
+  tps_stages: Record<string, number>; // label → percentage
   activities: PetugasActivityItem[];
 }
 

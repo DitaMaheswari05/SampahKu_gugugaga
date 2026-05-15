@@ -213,7 +213,6 @@ province              text                        -- Provinsi, misal "DKI Jakart
 coordinates           jsonb NOT NULL              -- GeoJSON Point: { "type": "Point", "coordinates": [lng, lat] }
 radius_m              integer NOT NULL DEFAULT 200 -- Radius geofence (meter)
 capacity_tons_per_day numeric DEFAULT 0           -- Kapasitas pengolahan (ton/hari)
-is_verified           boolean DEFAULT false       -- Status verifikasi TPS
 allowed_actions       text[] NOT NULL DEFAULT '{}' -- biz_step yang boleh dilakukan petugas TPS ini
 admin_id              uuid NOT NULL FK → profiles.id  -- ADMIN_TPS yang mengelola (1:1)
 created_at            timestamptz
@@ -599,4 +598,4 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Normalisasi DB: split address → city+province, tambah capacity/is_verified di tps_facilities, tambah tps_id FK di activities, restore gtin_prefix di profiles, hapus points).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Normalisasi DB: split address → city+province, tambah capacity di tps_facilities, tambah tps_id FK di activities, restore gtin_prefix di profiles, hapus points).*

@@ -1,5 +1,18 @@
 import { supabase } from '../config/supabase';
 
+/**
+ * Labels for biz_step values in Indonesian.
+ * Shared constant used for stage percentage computation.
+ */
+export const BIZ_STEP_LABELS: Record<string, string> = {
+  collecting: 'Terkumpul',
+  receiving: 'Diterima',
+  inspecting: 'Dipilah',
+  shipping: 'Diproses',
+  recycling: 'Didaur ulang',
+  disposing: 'Dibuang',
+};
+
 export class PublicService {
   static async getDashboardStats() {
     // Pengguna Aktif: Count of profiles with role KONSUMEN, PETUGAS, or ADMIN_TPS

@@ -137,7 +137,7 @@ export class TpsService {
     // Get all TPS facilities with new normalized columns
     const { data: tpsList, error: tpsErr } = await supabase
       .from('tps_facilities')
-      .select('id, name, type, address, city, province, coordinates, capacity_tons_per_day, is_verified, created_at');
+      .select('id, name, type, address, city, province, coordinates, capacity_tons_per_day, created_at');
 
     if (tpsErr) throw tpsErr;
     if (!tpsList || tpsList.length === 0) return [];
@@ -199,7 +199,6 @@ export class TpsService {
         city: tps.city,
         province: tps.province,
         capacity_tons_per_day: tps.capacity_tons_per_day || 0,
-        is_verified: tps.is_verified || false,
         petugas_count: petugasCountMap.get(tps.id) || 0,
         total_updates: stats.total,
         stages,

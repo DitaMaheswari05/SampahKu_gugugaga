@@ -33,9 +33,12 @@ const AdminTpsDashboard: React.FC = () => {
   const [tpsName, setTpsName] = useState('');
   const [tpsType, setTpsType] = useState('TPS');
   const [tpsAddress, setTpsAddress] = useState('');
+  const [tpsCity, setTpsCity] = useState('');
+  const [tpsProvince, setTpsProvince] = useState('');
   const [tpsLat, setTpsLat] = useState('');
   const [tpsLng, setTpsLng] = useState('');
   const [tpsRadius, setTpsRadius] = useState('200');
+  const [tpsCapacity, setTpsCapacity] = useState('');
   const [tpsActions, setTpsActions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -87,6 +90,9 @@ const AdminTpsDashboard: React.FC = () => {
         name: tpsName,
         type: tpsType,
         address: tpsAddress,
+        city: tpsCity,
+        province: tpsProvince,
+        capacity_tons_per_day: tpsCapacity ? parseFloat(tpsCapacity) : undefined,
         coordinates: {
           type: 'Point',
           coordinates: [parseFloat(tpsLng), parseFloat(tpsLat)],
@@ -209,6 +215,30 @@ const AdminTpsDashboard: React.FC = () => {
               </div>
 
               <div className={styles.formField}>
+                <label className={styles.formLabel}>Kota</label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  placeholder="Contoh: Jakarta Selatan"
+                  value={tpsCity}
+                  onChange={(e) => setTpsCity(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.formField}>
+                <label className={styles.formLabel}>Provinsi</label>
+                <input
+                  type="text"
+                  className={styles.formInput}
+                  placeholder="Contoh: DKI Jakarta"
+                  value={tpsProvince}
+                  onChange={(e) => setTpsProvince(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.formField}>
                 <label className={styles.formLabel}>Koordinat (Lat, Lng)</label>
                 <div className={styles.coordRow}>
                   <input
@@ -259,6 +289,19 @@ const AdminTpsDashboard: React.FC = () => {
                   required
                   min={50}
                   max={5000}
+                />
+              </div>
+
+              <div className={styles.formField}>
+                <label className={styles.formLabel}>Kapasitas (ton/hari)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className={styles.formInput}
+                  placeholder="Contoh: 45.5"
+                  value={tpsCapacity}
+                  onChange={(e) => setTpsCapacity(e.target.value)}
+                  min={0}
                 />
               </div>
 
