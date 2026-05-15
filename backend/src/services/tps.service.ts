@@ -10,8 +10,11 @@ export class TpsService {
     name: string;
     type: string;
     address: string;
+    city: string;
+    province: string;
     coordinates: { type: string; coordinates: number[] };
     radius_m?: number;
+    capacity_tons_per_day?: number;
     allowed_actions: string[];
   }) {
     // Check if admin already has a TPS
@@ -30,8 +33,11 @@ export class TpsService {
         name: data.name,
         type: data.type,
         address: data.address,
+        city: data.city,
+        province: data.province,
         coordinates: data.coordinates,
         radius_m: data.radius_m || 200,
+        capacity_tons_per_day: data.capacity_tons_per_day || 0,
         allowed_actions: data.allowed_actions,
         admin_id: adminId,
       }])
@@ -125,21 +131,20 @@ export class TpsService {
 
   /**
    * Public listing of all TPS with aggregated stats.
-   * Used for the public TPS directory on the landing page.
+   * Uses the denormalized activities.tps_id for efficient 1-hop aggregation.
    */
   static async getPublicTpsList() {
-    // Get all TPS facilities
+    // Get all TPS facilities with new normalized columns
     const { data: tpsList, error: tpsErr } = await supabase
       .from('tps_facilities')
-      .select('id, name, type, address, coordinates, created_at');
+      .select('id, name, type, address, city, province, coordinates, capacity_tons_per_day, is_verified, created_at');
 
     if (tpsErr) throw tpsErr;
     if (!tpsList || tpsList.length === 0) return [];
 
-    // Get all petugas grouped by tps_id for counting
     const tpsIds = tpsList.map(t => t.id);
 
-    // Get activity counts per TPS (via petugas profiles → activities)
+    // Count petugas per TPS
     const { data: petugasProfiles, error: petErr } = await supabase
       .from('profiles')
       .select('id, tps_id')
@@ -148,32 +153,6 @@ export class TpsService {
 
     if (petErr) throw petErr;
 
-    const petugasIds = (petugasProfiles || []).map(p => p.id);
-    const petugasTpsMap = new Map((petugasProfiles || []).map(p => [p.id, p.tps_id]));
-
-    // Count activities and recycled per TPS
-    let activitiesByTps = new Map<string, { total: number; recycled: number }>();
-
-    if (petugasIds.length > 0) {
-      const { data: activities, error: actErr } = await supabase
-        .from('activities')
-        .select('actor_id, biz_step')
-        .in('actor_id', petugasIds);
-
-      if (!actErr && activities) {
-        for (const act of activities) {
-          const tpsId = petugasTpsMap.get(act.actor_id);
-          if (!tpsId) continue;
-
-          const stats = activitiesByTps.get(tpsId) || { total: 0, recycled: 0 };
-          stats.total++;
-          if (act.biz_step === 'recycling') stats.recycled++;
-          activitiesByTps.set(tpsId, stats);
-        }
-      }
-    }
-
-    // Count petugas per TPS
     const petugasCountMap = new Map<string, number>();
     for (const p of (petugasProfiles || [])) {
       if (p.tps_id) {
@@ -181,21 +160,49 @@ export class TpsService {
       }
     }
 
+    // Aggregate activities directly via tps_id (1-hop, no longer 3-hop)
+    const activitiesByTps = new Map<string, { total: number; by_step: Record<string, number> }>();
+
+    if (tpsIds.length > 0) {
+      const { data: activities, error: actErr } = await supabase
+        .from('activities')
+        .select('tps_id, biz_step')
+        .in('tps_id', tpsIds);
+
+      if (!actErr && activities) {
+        for (const act of activities) {
+          if (!act.tps_id) continue;
+          const stats = activitiesByTps.get(act.tps_id) || { total: 0, by_step: {} };
+          stats.total++;
+          stats.by_step[act.biz_step] = (stats.by_step[act.biz_step] || 0) + 1;
+          activitiesByTps.set(act.tps_id, stats);
+        }
+      }
+    }
+
     return tpsList.map(tps => {
-      const stats = activitiesByTps.get(tps.id) || { total: 0, recycled: 0 };
-      const recoveryRate = stats.total > 0
-        ? Math.round((stats.recycled / stats.total) * 100)
-        : 0;
+      const stats = activitiesByTps.get(tps.id) || { total: 0, by_step: {} };
+
+      // Calculate stage percentages (Tahap %)
+      const stages: Record<string, number> = {};
+      if (stats.total > 0) {
+        for (const [step, count] of Object.entries(stats.by_step)) {
+          stages[step] = Math.round((count / stats.total) * 100);
+        }
+      }
 
       return {
         id: tps.id,
         name: tps.name,
         type: tps.type,
         address: tps.address,
+        city: tps.city,
+        province: tps.province,
+        capacity_tons_per_day: tps.capacity_tons_per_day || 0,
+        is_verified: tps.is_verified || false,
         petugas_count: petugasCountMap.get(tps.id) || 0,
-        total_activities: stats.total,
-        recycled_count: stats.recycled,
-        recovery_rate: recoveryRate,
+        total_updates: stats.total,
+        stages,
         created_at: tps.created_at,
       };
     });

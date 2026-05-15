@@ -7,14 +7,14 @@ export const registerTps = async (req: Request, res: Response) => {
       return res.status(403).json({ status: 'error', message: 'Hanya ADMIN_TPS yang bisa mendaftarkan TPS.' });
     }
 
-    const { name, type, address, coordinates, radius_m, allowed_actions } = req.body;
+    const { name, type, address, city, province, coordinates, radius_m, capacity_tons_per_day, allowed_actions } = req.body;
 
-    if (!name || !type || !address || !coordinates || !allowed_actions) {
-      return res.status(400).json({ status: 'error', message: 'Field name, type, address, coordinates, dan allowed_actions wajib diisi.' });
+    if (!name || !type || !address || !city || !province || !coordinates || !allowed_actions) {
+      return res.status(400).json({ status: 'error', message: 'Field name, type, address, city, province, coordinates, dan allowed_actions wajib diisi.' });
     }
 
     const tps = await TpsService.registerTps(req.profile.id, {
-      name, type, address, coordinates, radius_m, allowed_actions
+      name, type, address, city, province, coordinates, radius_m, capacity_tons_per_day, allowed_actions
     });
 
     return res.status(201).json({ status: 'success', data: tps });

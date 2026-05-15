@@ -195,23 +195,28 @@ email        text UNIQUE NOT NULL
 name         text NOT NULL
 role         text CHECK (role IN ('KONSUMEN', 'PETUGAS', 'ADMIN_TPS', 'BRAND'))
 tps_id       uuid FK → tps_facilities.id  -- (Hanya PETUGAS) TPS tempat petugas bertugas
+gtin_prefix  text                         -- (Hanya BRAND) Prefix GTIN untuk generate kode produk
 created_at   timestamptz
 ```
 
-> **⚠️ DIHAPUS**: Kolom `points` dan `gtin_prefix` sudah dihapus. Tabel `point_history` dan `user_collections` sudah di-DROP.
+> **⚠️ DIHAPUS**: Kolom `points` sudah dihapus. Tabel `point_history` dan `user_collections` sudah di-DROP.
 
-#### `tps_facilities` (BARU)
+#### `tps_facilities`
 Data TPS resmi yang terdaftar di platform. Didaftarkan oleh ADMIN_TPS.
 ```sql
-id              uuid PK
-name            text NOT NULL               -- Nama TPS, misal "TPS3R Kelurahan Menteng"
-type            text NOT NULL               -- Tipe bebas: TPS, TPS3R, Bank Sampah, TPST, TPA, Pengepul, Recycler
-address         text NOT NULL               -- Alamat lengkap
-coordinates     jsonb NOT NULL              -- GeoJSON Point: { "type": "Point", "coordinates": [lng, lat] }
-radius_m        integer NOT NULL DEFAULT 200 -- Radius geofence (meter). Petugas harus dalam radius ini saat scan.
-allowed_actions text[] NOT NULL DEFAULT '{}' -- biz_step yang boleh dilakukan petugas TPS ini
-admin_id        uuid NOT NULL FK → profiles.id  -- ADMIN_TPS yang mengelola (1:1)
-created_at      timestamptz
+id                    uuid PK
+name                  text NOT NULL               -- Nama TPS, misal "TPS3R Kelurahan Menteng"
+type                  text NOT NULL               -- Tipe: TPS, TPS3R, BANK_SAMPAH, TPST, TPA, PENGEPUL, RECYCLER
+address               text NOT NULL               -- Alamat jalan (tanpa kota/provinsi)
+city                  text                        -- Kota, misal "Jakarta Selatan"
+province              text                        -- Provinsi, misal "DKI Jakarta"
+coordinates           jsonb NOT NULL              -- GeoJSON Point: { "type": "Point", "coordinates": [lng, lat] }
+radius_m              integer NOT NULL DEFAULT 200 -- Radius geofence (meter)
+capacity_tons_per_day numeric DEFAULT 0           -- Kapasitas pengolahan (ton/hari)
+is_verified           boolean DEFAULT false       -- Status verifikasi TPS
+allowed_actions       text[] NOT NULL DEFAULT '{}' -- biz_step yang boleh dilakukan petugas TPS ini
+admin_id              uuid NOT NULL FK → profiles.id  -- ADMIN_TPS yang mengelola (1:1)
+created_at            timestamptz
 ```
 
 **Relasi**: 1 ADMIN_TPS : 1 TPS. 1 TPS : banyak PETUGAS (via `profiles.tps_id`).
@@ -283,6 +288,7 @@ Inti sistem: setiap event dalam perjalanan sampah. Mengikuti standar **EPCIS 2.0
 id              uuid PK
 instance_id     uuid FK → product_instances.id
 actor_id        uuid FK → profiles.id
+tps_id          uuid FK → tps_facilities.id  -- TPS tempat aktivitas terjadi (NULL untuk konsumen/brand)
 event_type      text DEFAULT 'ObjectEvent'
 biz_step        text
 location_name   text
@@ -293,6 +299,8 @@ timestamp       timestamptz DEFAULT now()
 blockchain_hash text   -- SHA-256 integrity hash (bukan blockchain per-transaksi)
 evidence_url    text
 ```
+
+> **Catatan `tps_id`**: Kolom ini diisi otomatis oleh backend saat PETUGAS scan (dari `profiles.tps_id`). Memungkinkan query agregasi TPS stats secara langsung tanpa join 3 tabel.
 
 **Nilai `biz_step`** — dipetakan ke status lifecycle:
 | biz_step | Status Baru | Aktor | Deskripsi |
@@ -560,7 +568,7 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 1. **Jangan pernah** gunakan Supabase Anon Key di backend — selalu Service Role Key.
 2. **Selalu** ikuti konvensi folder: controllers tipis, logic di services.
 3. **Status lifecycle** `current_status` harus selalu diupdate di `product_instances` setiap ada aktivitas baru.
-4. **Poin** harus dicatat di dua tempat: `point_history` (per transaksi) dan `profiles.points` (total akumulasi). Implementasi backend harus berusaha melakukan update secara atomik (gunakan DB function/transaction jika memungkinkan).
+4. **Poin DIHAPUS** — sistem poin sudah dihapus total. Tidak ada `point_history`, tidak ada `profiles.points`.
 5. **`epcis_body`** adalah JSONB — simpan full EPCIS 2.0 event payload, bukan ringkasan.
 6. **QR code** mewakili `product_instances`, bukan `products`. Satu GTIN bisa punya banyak instances.
 7. **`blockchain_hash`** di `activities` diisi otomatis oleh backend dengan *hash* SHA-256 (`crypto`) dari *payload* aktivitas sebagai simulasi integrasi Hyperledger Fabric untuk keperluan hackathon.
@@ -591,4 +599,4 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-05 (Refactor product_instances FK dari gtin ke product_id + Fix auth seeding via Admin API + Fix konsumen.service.ts gtin queries).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Normalisasi DB: split address → city+province, tambah capacity/is_verified di tps_facilities, tambah tps_id FK di activities, restore gtin_prefix di profiles, hapus points).*

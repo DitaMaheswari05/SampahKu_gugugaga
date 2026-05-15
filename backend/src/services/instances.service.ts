@@ -31,6 +31,8 @@ export class InstancesService {
     const newStatus = BIZ_STEP_TO_STATUS[biz_step];
     if (!newStatus) throw new Error('Invalid biz_step');
 
+    let resolvedTpsId: string | null = null;
+
     // ── PETUGAS validation: allowed_actions + geo-fence ──
     const { data: actorProfile } = await supabase
       .from('profiles')
@@ -42,6 +44,8 @@ export class InstancesService {
       if (!actorProfile.tps_id) {
         throw new Error('Petugas tidak terikat ke TPS manapun.');
       }
+
+      resolvedTpsId = actorProfile.tps_id;
 
       const { data: tps } = await supabase
         .from('tps_facilities')
@@ -94,7 +98,8 @@ export class InstancesService {
       epcis_body: Object.keys(epcisBody).length > 0 ? epcisBody : null,
       timestamp,
       evidence_url: payload.evidence_url || null,
-      blockchain_hash: ''
+      blockchain_hash: '',
+      tps_id: resolvedTpsId,
     };
 
     // Generate SHA-256 integrity hash
