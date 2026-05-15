@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, DashboardStats } from '../services/public.service';
+import { getDashboardStats, getPublicTpsList, DashboardStats, PublicTpsItem } from '../services/public.service';
 import styles from '../styles/Home.module.css';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [tpsList, setTpsList] = useState<PublicTpsItem[]>([]);
 
   // Efek untuk mengaktifkan smooth scroll secara global
   useEffect(() => {
     document.documentElement.style.scrollBehavior = 'smooth';
     
-    // Fetch stats
     getDashboardStats()
       .then(data => setStats(data))
       .catch(err => console.error('Error fetching stats:', err));
+
+    getPublicTpsList()
+      .then(data => setTpsList(data))
+      .catch(err => console.error('Error fetching TPS list:', err));
 
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
@@ -95,6 +99,11 @@ const Home: React.FC = () => {
             <h2>{stats ? formatNumber(stats.active_users) : '...'}</h2>
             <p>Pengguna Aktif</p>
           </div>
+          <div className={styles.divider}></div>
+          <div className={styles.statItem}>
+            <h2>{stats ? formatNumber(stats.total_tps) : '...'}</h2>
+            <p>TPS Terdaftar</p>
+          </div>
         </div>
 
         {/* Truck Image */}
@@ -162,6 +171,62 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* TPS Directory Section */}
+      {tpsList.length > 0 && (
+        <section id="tps-directory" className={styles.section}>
+          <div className={styles.sectionTag}>JARINGAN TPS</div>
+          <h2 className={styles.sectionTitle}>Direktori TPS Terdaftar</h2>
+          <p className={styles.sectionSubtitle}>
+            Daftar TPS yang terdaftar di platform SampahKu
+          </p>
+
+          <div style={{
+            overflowX: 'auto',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            background: '#fff',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontFamily: "'Poppins', sans-serif",
+              fontSize: '13px',
+            }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Nama TPS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Tipe</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>Alamat</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Petugas</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#374151', textAlign: 'center' }}>Recovery</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tpsList.map((t) => (
+                  <tr key={t.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#1f2937' }}>{t.name}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: '12px',
+                        background: '#e8f5e9',
+                        color: '#2e7d32',
+                      }}>{t.type}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.address}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>{t.petugas_count}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: t.recovery_rate > 50 ? '#16a34a' : '#f59e0b' }}>{t.recovery_rate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className={styles.footer}>

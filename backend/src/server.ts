@@ -7,6 +7,7 @@ import productsRouter from './routes/products'
 import petugasRouter from './routes/petugas'
 import uploadRouter from './routes/upload'
 import usersRouter from './routes/users'
+import tpsRouter from './routes/tps'
 import publicRouter from './routes/public'
 
 // Resolve DNS issue
@@ -25,6 +26,7 @@ app.use('/products', productsRouter);
 app.use('/petugas', petugasRouter);
 app.use('/upload', uploadRouter);
 app.use('/users', usersRouter);
+app.use('/tps', tpsRouter);
 app.use('/', publicRouter);
 
 app.get('/health', (req: Request, res: Response) => {
@@ -34,11 +36,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-app.get('/test-supabase', async (req: Request, res: Response) => {
-  const { data, error } = await supabase.from('hackathon_test').select('*');
-  if(error) return res.status(500).json(error);
-  return res.json(data);
-});
+
 
 // Global error handler
 app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {

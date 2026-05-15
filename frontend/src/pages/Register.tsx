@@ -59,13 +59,13 @@ const Register: React.FC = () => {
         <p className={styles.subtitle}>Daftar untuk memulai perjalanan circular Anda</p>
 
         <div className={styles.tabs}>
-          {[ROLES.KONSUMEN, ROLES.PETUGAS, ROLES.BRAND].map((r) => (
+          {[ROLES.KONSUMEN, ROLES.ADMIN_TPS, ROLES.BRAND].map((r) => (
             <div
               key={r}
               className={`${styles.tab} ${role === r ? styles.tabActive : ''}`}
               onClick={() => setRole(r)}
             >
-              {r === ROLES.KONSUMEN ? 'Konsumen' : r === ROLES.PETUGAS ? 'Petugas' : 'Produsen'}
+              {r === ROLES.KONSUMEN ? 'Konsumen' : r === ROLES.ADMIN_TPS ? 'Admin TPS' : 'Produsen'}
             </div>
           ))}
         </div>

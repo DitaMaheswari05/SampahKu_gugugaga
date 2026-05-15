@@ -10,7 +10,7 @@ function getAuthHeaders(): Record<string, string> {
 
 function getAuthHeadersMultipart(): Record<string, string> {
   const token = localStorage.getItem('token');
-  // Jangan set Content-Type untuk multipart/form-data â€” biarkan browser set boundary otomatis.
+  // Jangan set Content-Type untuk multipart/form-data — biarkan browser set boundary otomatis.
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -21,7 +21,6 @@ export interface PetugasActivityItem {
   title: string;
   date: string;
   location: string;
-  points: string;
 }
 
 export interface PetugasDashboardData {
@@ -30,13 +29,16 @@ export interface PetugasDashboardData {
     name: string;
     email: string;
     role: string;
-    points: number;
   };
+  tps: {
+    id: string;
+    name: string;
+    type: string;
+    address: string;
+    allowed_actions: string[];
+  } | null;
   summary: {
-    totalPoints: number;
     totalUpdates: number;
-    progressReward: number;
-    remainingPoints: number;
   };
   activities: PetugasActivityItem[];
 }
@@ -63,6 +65,7 @@ export interface ScanPayload {
   facility_type: string;
   material_type?: string;
   evidence_url?: string | null;
+  coordinates?: { lat: number; lng: number };
 }
 
 // --- Functions ---
@@ -117,7 +120,7 @@ export const resolveGS1Link = async (url: string): Promise<ProductInstanceResolv
 
 /**
  * Upload foto bukti ke backend.
- * Backend yang menghandle upload ke Supabase Storage â€” frontend tidak berinteraksi
+ * Backend yang menghandle upload ke Supabase Storage — frontend tidak berinteraksi
  * langsung dengan Supabase (sesuai arsitektur context.md).
  */
 export const uploadEvidence = async (file: File): Promise<string> => {

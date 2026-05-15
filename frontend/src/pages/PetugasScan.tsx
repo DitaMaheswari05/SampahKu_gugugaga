@@ -29,9 +29,30 @@ export default function PetugasScan() {
   const [facilityType, setFacilityType] = useState('TPS');
   const [materialType, setMaterialType] = useState('Plastik PET');
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState('');
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Capture geolocation saat komponen dimount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGeoError('');
+        },
+        (err) => {
+          console.error('Geolocation error:', err);
+          setGeoError('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      setGeoError('Browser tidak mendukung geolocation.');
+    }
+  }, []);
 
   // Cleanup kamera saat komponen di-unmount
   useEffect(() => {
@@ -135,6 +156,7 @@ export default function PetugasScan() {
         facility_type: facilityType,
         material_type: bizStep === 'inspecting' ? materialType : undefined,
         evidence_url,
+        coordinates: geoCoords || undefined,
       };
 
       await scanInstance(instance.id, payload);
@@ -165,6 +187,7 @@ export default function PetugasScan() {
           <p className={styles.subtitle}>Pindai QR sampah untuk memantau dan memperbarui status.</p>
         </div>
 
+        {geoError && <div className={styles.errorAlert}>{geoError}</div>}
         {errorMsg && step === 'scan' && <div className={styles.errorAlert}>{errorMsg}</div>}
 
         <div className={styles.card}>
@@ -306,7 +329,7 @@ export default function PetugasScan() {
 
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.btnPrimary} disabled={loading}>
-                    {loading ? 'Menyimpan...' : 'Simpan & Dapatkan Poin'}
+                    {loading ? 'Menyimpan...' : 'Simpan Pembaruan'}
                   </button>
                   <button type="button" className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
                     Batal / Pindai Ulang
@@ -327,7 +350,7 @@ export default function PetugasScan() {
               </div>
               <div>
                 <h2 className={styles.statusTitle}>Berhasil!</h2>
-                <p className={styles.statusDesc}>Status sampah berhasil diperbarui. Poin telah ditambahkan ke akun Anda!</p>
+                <p className={styles.statusDesc}>Status sampah berhasil diperbarui.</p>
               </div>
               <div style={{ width: '100%', marginTop: '10px' }}>
                 <button className={styles.btnPrimary} onClick={handleRetake}>

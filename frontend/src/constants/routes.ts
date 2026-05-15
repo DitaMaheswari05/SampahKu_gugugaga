@@ -8,6 +8,7 @@ export const ROLE_HOME_ROUTES: Record<UserRole, string> = {
   [ROLES.BRAND]: '/brand/dashboard',
   [ROLES.PETUGAS]: '/petugas/dashboard',
   [ROLES.KONSUMEN]: '/dashboard',
+  [ROLES.ADMIN_TPS]: '/admin-tps/dashboard',
 };
 
 /**

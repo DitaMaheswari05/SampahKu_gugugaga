@@ -153,6 +153,18 @@ const Header: React.FC = () => {
                 </>
               )}
 
+              {/* Menu Role: ADMIN_TPS */}
+              {userRole === 'ADMIN_TPS' && (
+                <>
+                  <button 
+                    onClick={() => { setIsMenuOpen(false); navigate('/admin-tps/dashboard'); }} 
+                    style={menuItemStyle}
+                  >
+                    Dashboard TPS
+                  </button>
+                </>
+              )}
+
               {/* Menu Role: PETUGAS */}
               {userRole === 'PETUGAS' && (
                 <>
