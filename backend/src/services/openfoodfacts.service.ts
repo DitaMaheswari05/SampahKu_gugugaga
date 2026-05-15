@@ -52,21 +52,28 @@ export class OpenFoodFactsService {
       }
 
       // OFF stores names in localized fields — try all candidates
-      const productName = product.product_name
-        || product.product_name_id   // Indonesian name
-        || product.product_name_en   // English name
-        || product.abbreviated_product_name
-        || product.generic_name
-        || product.generic_name_id
-        || product.generic_name_en
-        || undefined;
+      // Many OFF entries have empty strings "", so we trim and filter
+      const trim = (v: any) => (typeof v === 'string' ? v.trim() : '');
 
-      const genericName = product.generic_name
-        || product.generic_name_id
-        || product.generic_name_en
-        || undefined;
+      const nameCandidates = [
+        product.product_name,
+        product.product_name_id,   // Indonesian name
+        product.product_name_en,   // English name
+        product.abbreviated_product_name,
+        product.generic_name,
+        product.generic_name_id,
+        product.generic_name_en,
+      ];
+      const productName = nameCandidates.map(trim).find(c => c.length > 0) || undefined;
 
-      const brands = product.brands || undefined;
+      const genericCandidates = [
+        product.generic_name,
+        product.generic_name_id,
+        product.generic_name_en,
+      ];
+      const genericName = genericCandidates.map(trim).find(c => c.length > 0) || undefined;
+
+      const brands = trim(product.brands) || undefined;
 
       // Compose a meaningful display name if the bare product_name is empty
       let displayName = productName;

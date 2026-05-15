@@ -453,9 +453,6 @@ export default function PetugasScan() {
           {step === 'preview' && scanType === 'TIER_1' && instance && (
             <>
               <div className={styles.infoContainer} style={{ marginBottom: '10px' }}>
-                <div style={{ background: '#e3f2fd', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '12px', color: '#1565c0', fontWeight: 600, fontFamily: "'Poppins', sans-serif" }}>
-                  📦 Tier 1 - Instance Unik
-                </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Nama Produk</span>
                   <span className={styles.infoValue}>{instance.products?.product_name || 'Tidak diketahui'}</span>

@@ -104,18 +104,20 @@ export class ProductService {
     const effectiveQty = identification_type === 'BATCH' ? Math.max(1, Math.min(quantity, 10000)) : 1;
     const now = new Date().toISOString();
 
-    // Insert ONE instance row
+    // Insert instance rows: 1 for UNIQUE, effectiveQty for BATCH
+    const instanceRows = Array.from({ length: effectiveQty }, () => ({
+      product_id: product.id,
+      identification_type,
+      batch_number: batch_number || null,
+      serial_number: serial_number || null,
+      identity_number: parsedIdentity,
+      current_status: 'IN_MARKET',
+      last_updated: now,
+    }));
+
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .insert([{
-        product_id: product.id,
-        identification_type,
-        batch_number: batch_number || null,
-        serial_number: serial_number || null,
-        identity_number: parsedIdentity,
-        current_status: 'IN_MARKET',
-        last_updated: now,
-      }])
+      .insert(instanceRows)
       .select();
 
     if (iErr || !instances || instances.length === 0) throw iErr || new Error('Failed to create instances');
@@ -369,7 +371,7 @@ export class ProductService {
     // If existing product has a meaningful name, return it directly
     if (existingProduct) {
       const hasGoodName = existingProduct.product_name
-        && existingProduct.product_name !== 'Unknown Product'
+        && !existingProduct.product_name.startsWith('Unknown Product')
         && existingProduct.product_name !== cleanGtin
         && !/^\d{8,14}$/.test(existingProduct.product_name);
 
@@ -438,7 +440,7 @@ export class ProductService {
       .insert([{
         gtin: cleanGtin,
         brand_id: null,
-        product_name: 'Unknown Product',
+        product_name: `Unknown Product (${cleanGtin})`,
         material_passport: materialPassport,
         category: 'Unknown',
         weight_grams: null,

@@ -60,7 +60,7 @@ const runSeed = async () => {
       address: 'Jl. Demo 1',
       city: 'Jakarta Pusat',
       province: 'DKI Jakarta',
-      coordinates: { type: 'Point', coordinates: [106.8229, -6.1944] },
+      coordinates: { type: 'Point', coordinates: [107.6107310, -6.8911205] },
       radius_m: 1000,
       capacity_tons_per_day: 5,
       allowed_actions: tpsActions1,
@@ -134,7 +134,7 @@ const runSeed = async () => {
       instBatch.instance.id // 1 item from the batch of 100
     ];
 
-    const tps1Coords = { lat: -6.1944, lng: 106.8229 };
+    const tps1Coords = { lat: -6.8911205, lng: 107.6107310 };
     const tps2Coords = { lat: -6.2944, lng: 106.8229 };
 
     for (const instId of instancesToSimulate) {

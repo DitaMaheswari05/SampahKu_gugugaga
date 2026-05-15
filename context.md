@@ -661,4 +661,26 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Two-tier GTIN/OFF: tambah sku_aggregates, brand_gtin_prefixes, source metadata di products, normalisasi identity_number di product_instances, activities dual-tier identifier).* 
+## 13. Known Issues & Fixes
+
+### Issue: Batch Instance Multi-Row Insert Fails (2026-05-16)
+
+**Problem**: 
+- User mencoba create batch instance dengan `quantity: 98` untuk product_id `ad810829-629d-455d-ae60-4042d7ea3920`
+- Backend loop & insert 98 row ke `product_instances` dengan batch_number sama
+- Database reject dengan error "identity_number 12332 sudah dipakai untuk product_id ... dan type BATCH"
+- Root cause: Ada UNIQUE constraint di database yang salah design (mungkin `UNIQUE(product_id, batch_number)` atau sejenisnya)
+
+**Fix**:
+- Constraint UNIQUE pada batch_number tidak valid — BATCH perlu bisa multi-row dengan batch_number identik
+- Hanya UNIQUE type (serial_number) yang harus memiliki constraint unique per product
+- SQL fix tersedia di `fix_batch_constraint.sql` — jalankan di Supabase SQL editor:
+  1. Hapus constraint: `unique_product_id_batch_number`, `unique_product_id_serial_number_batch_number`, dll
+  2. Tambah constraint yang benar: `UNIQUE (product_id, serial_number) WHERE identification_type = 'UNIQUE' AND serial_number IS NOT NULL`
+  3. Setelah fix, backend bisa insert quantity=98 rows tanpa error
+
+**Status**: Pending database constraint fix — update context.md setelah constraint dihapus & batch instance create berhasil ditest.
+
+---
+
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-16 (Batch instance multi-row insert fix + constraint documentation).* 
