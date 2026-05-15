@@ -162,6 +162,12 @@ const Header: React.FC = () => {
                   >
                     Dashboard TPS
                   </button>
+                  <button 
+                    onClick={() => { setIsMenuOpen(false); navigate('/admin-tps/manajemen-petugas'); }} 
+                    style={menuItemStyle}
+                  >
+                    Manajemen Petugas
+                  </button>
                 </>
               )}
 

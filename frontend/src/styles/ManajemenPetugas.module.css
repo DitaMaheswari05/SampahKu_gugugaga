@@ -1,0 +1,232 @@
+.page {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  background-color: var(--background, #EDF4E6); /* Samakan base bgColor dengan desain */
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  padding-bottom: 30px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.content {
+  padding: 24px 16px;
+}
+
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+  color: var(--text-muted, #888);
+  font-size: 14px;
+}
+
+.errorBanner {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Typography Headers ── */
+.headerSection {
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #101828;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: #737373;
+}
+
+/* ── 4 Cards Summary in One Grid (Mobile Friendly) ── */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.cardTitle {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.textActive { color: #00A63E; }
+.textInactive { color: #4A5565; }
+.textTotal { color: #155DFC; }
+.textPoints { color: #D08700; }
+
+.iconBox {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+
+.iconActive { background: linear-gradient(135deg, #05DF72 0%, #00A63E 100%); }
+.iconInactive { background: linear-gradient(135deg, #99A1AF 0%, #4A5565 100%); }
+.iconTotal { background: linear-gradient(135deg, #51A2FF 0%, #155DFC 100%); }
+.iconPoints { background: linear-gradient(135deg, #FDC700 0%, #F54900 100%); }
+
+.cardValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: #101828;
+  line-height: 1.2;
+}
+
+.cardLabel {
+  font-size: 11px;
+  color: #4A5565;
+  margin-top: 4px;
+}
+
+/* ── Horizontal Scrolling Table Container ── */
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.05);
+  padding: 16px 0;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #F3F4F6;
+  white-space: nowrap;
+}
+
+.table th {
+  background: #F3F4F6 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: #364153;
+}
+
+/* Detail Cell Styling */
+.tdUser {
+  display: flex;
+  flex-direction: column;
+}
+
+.userName {
+  font-weight: 700;
+  font-size: 14px;
+  color: #101828;
+}
+
+.userDate {
+  font-size: 11px;
+  color: #6A7282;
+  margin-top: 2px;
+}
+
+.textData {
+  font-size: 13px;
+  font-weight: 500;
+  color: #364153;
+}
+
+.textBoldData {
+  font-size: 14px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.textPointsData {
+  font-size: 14px;
+  font-weight: 700;
+  color: #D08700;
+}
+
+/* Badges */
+.badgeArea {
+  background: #DBEAFE;
+  color: #1447E6;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badgeActive {
+  background: #DCFCE7;
+  color: #008236;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badgeInactive {
+  background: #F3F4F6;
+  color: #364153;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Action Buttons */
+.btnDelete {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border: 1px solid #E7000B;
+  color: #E7000B;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btnDelete:hover {
+  background: #fef2f2;
+}

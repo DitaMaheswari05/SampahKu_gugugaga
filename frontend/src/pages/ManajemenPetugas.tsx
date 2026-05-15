@@ -1,0 +1,217 @@
+import React, { useState, useEffect } from 'react';
+import Header from '../components/Header';
+import { getMyTps, getTpsPetugas, TpsData, PetugasItem } from '../services/tps.service';
+import styles from '../styles/ManajemenPetugas.module.css';
+
+interface PetugasExtended extends PetugasItem {
+  phone: string;
+  area: string;
+  totalUpdates: number;
+  points: number;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+const ManajemenPetugas: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [petugasList, setPetugasList] = useState<PetugasExtended[]>([]);
+  const [stats, setStats] = useState({ active: 0, inactive: 0, total: 0, points: 0 });
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const tpsData: TpsData | null = await getMyTps();
+        if (tpsData) {
+          const petugasData = await getTpsPetugas(tpsData.id);
+          
+          // Map data dari DB dan beri fallback data (mock) untuk field yang belum terdukung BE
+          const mappedPetugas: PetugasExtended[] = petugasData.map((p) => ({
+            ...p,
+            phone: '-', // Fallback (Bisa diganti jika endpoint sudah menyediakan phone_number)
+            area: tpsData.city || 'Tidak diketahui',
+            totalUpdates: 0, // Fallback
+            points: 0, // Fallback
+            status: 'ACTIVE' // Default ACTIVE
+          }));
+
+          setPetugasList(mappedPetugas);
+
+          // Kalkulasi Summary
+          const activeCount = mappedPetugas.filter(p => p.status === 'ACTIVE').length;
+          const inactiveCount = mappedPetugas.filter(p => p.status === 'INACTIVE').length;
+          const totalPoints = mappedPetugas.reduce((sum, p) => sum + p.points, 0);
+
+          setStats({
+            active: activeCount,
+            inactive: inactiveCount,
+            total: mappedPetugas.length,
+            points: totalPoints,
+          });
+        } else {
+          setError('Anda belum memiliki TPS yang terdaftar.');
+        }
+      } catch (e: any) {
+        setError(e.message || 'Gagal memuat data petugas');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleDelete = (id: string) => {
+    // Fungsi hapus dapat diintegrasikan dengan BE nantinya
+    if(window.confirm('Hapus petugas ini?')) {
+       console.log('Menghapus petugas dengan ID:', id);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <Header />
+        <main className={styles.content}>
+          <div className={styles.loadingContainer}>Memuat Data Petugas...</div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <Header />
+
+      <main className={styles.content}>
+        <div className={styles.headerSection}>
+          <h1 className={styles.title}>Manajemen Akun Petugas</h1>
+          <p className={styles.subtitle}>Kelola akun petugas pengelola sampah</p>
+        </div>
+
+        {error && <div className={styles.errorBanner}>{error}</div>}
+
+        {/* --- 4 Summary Cards (Grid) --- */}
+        <div className={styles.summaryGrid}>
+          {/* Card 1: Active */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={`${styles.cardTitle} ${styles.textActive}`}>Active</span>
+              <div className={`${styles.iconBox} ${styles.iconActive}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/>
+                </svg>
+              </div>
+            </div>
+            <div className={styles.cardValue}>{stats.active}</div>
+            <div className={styles.cardLabel}>Petugas Aktif</div>
+          </div>
+
+          {/* Card 2: Inactive */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={`${styles.cardTitle} ${styles.textInactive}`}>Inactive</span>
+              <div className={`${styles.iconBox} ${styles.iconInactive}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
+                </svg>
+              </div>
+            </div>
+            <div className={styles.cardValue}>{stats.inactive}</div>
+            <div className={styles.cardLabel}>Petugas Nonaktif</div>
+          </div>
+
+          {/* Card 3: Total */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={`${styles.cardTitle} ${styles.textTotal}`}>Total</span>
+              <div className={`${styles.iconBox} ${styles.iconTotal}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+              </div>
+            </div>
+            <div className={styles.cardValue}>{stats.total}</div>
+            <div className={styles.cardLabel}>Total Updates</div>
+          </div>
+
+          {/* Card 4: Points */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={`${styles.cardTitle} ${styles.textPoints}`}>Points</span>
+              <div className={`${styles.iconBox} ${styles.iconPoints}`}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                </svg>
+              </div>
+            </div>
+            <div className={styles.cardValue}>{stats.points}</div>
+            <div className={styles.cardLabel}>Total Poin</div>
+          </div>
+        </div>
+
+        {/* --- Table List --- */}
+        <div className={styles.tableContainer}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Nama Petugas</th>
+                <th>Email</th>
+                <th>No. Telepon</th>
+                <th>Area Tugas</th>
+                <th>Total Update</th>
+                <th>Poin</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {petugasList.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
+                    Belum ada petugas terdaftar.
+                  </td>
+                </tr>
+              ) : (
+                petugasList.map((petugas) => (
+                  <tr key={petugas.id}>
+                    <td>
+                      <div className={styles.tdUser}>
+                        <span className={styles.userName}>{petugas.name}</span>
+                        <span className={styles.userDate}>
+                          Sejak {new Date(petugas.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-')}
+                        </span>
+                      </div>
+                    </td>
+                    <td className={styles.textData}>{petugas.email}</td>
+                    <td className={styles.textData}>{petugas.phone}</td>
+                    <td>
+                      <span className={styles.badgeArea}>{petugas.area}</span>
+                    </td>
+                    <td className={styles.textBoldData} style={{ textAlign: 'center' }}>{petugas.totalUpdates}</td>
+                    <td className={styles.textPointsData} style={{ textAlign: 'center' }}>{petugas.points}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className={petugas.status === 'ACTIVE' ? styles.badgeActive : styles.badgeInactive}>
+                        {petugas.status === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button className={styles.btnDelete} onClick={() => handleDelete(petugas.id)} aria-label="Hapus Petugas">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default ManajemenPetugas;
