@@ -14,6 +14,7 @@ import DetailSampah from './pages/DetailSampah';
 import AdminTpsDashboard from './pages/AdminTpsDashboard';
 import { ROLES } from './constants/roles';
 import { getHomeRouteByRole } from './constants/routes';
+import ManajemenPetugas from './pages/ManajemenPetugas';
 
 /**
  * Proteksi route berdasarkan status login dan role.
@@ -92,6 +93,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.ADMIN_TPS]}>
               <AdminTpsDashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* Tambahkan Route baru ini */}
+        <Route
+          path="/admin-tps/manajemen-petugas"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN_TPS]}>
+              <ManajemenPetugas />
             </ProtectedRoute>
           }
         />
