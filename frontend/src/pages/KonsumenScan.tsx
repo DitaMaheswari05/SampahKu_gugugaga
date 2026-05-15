@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import Header from '../components/Header';
-import { resolveGS1Link, discardInstance, discardBarcode } from '../services/konsumen.service';
+import { resolveGS1Link, discardInstance, discardBarcode, resolveBarcode, ResolvedBarcodeProduct } from '../services/konsumen.service';
 import styles from '../styles/KonsumenScan.module.css';
 
+/** Supported barcode formats — include all common 1D + QR */
+const SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+];
 
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
@@ -14,6 +24,7 @@ export default function KonsumenScan() {
   const [instance, setInstance] = useState<any>(null);
   const [scannedGtin, setScannedGtin] = useState<string | null>(null);
   const [scanType, setScanType] = useState<'TIER_1' | 'TIER_2' | null>(null);
+  const [resolvedProduct, setResolvedProduct] = useState<ResolvedBarcodeProduct | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -54,6 +65,12 @@ export default function KonsumenScan() {
         setInstance(null);
         setScannedGtin(decodedText);
         setScanType('TIER_2');
+        try {
+          const product = await resolveBarcode(decodedText);
+          setResolvedProduct(product);
+        } catch {
+          setResolvedProduct(null);
+        }
       } else {
         throw new Error('Format QR/barcode tidak dikenali. Gunakan GS1 Digital Link atau barcode 8-14 digit.');
       }
@@ -75,7 +92,10 @@ export default function KonsumenScan() {
     setErrorMsg('');
     try {
       if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader', {
+          formatsToSupport: SUPPORTED_FORMATS,
+          verbose: false,
+        });
       }
       await html5QrCodeRef.current.start(
         { facingMode: 'environment' },
@@ -98,7 +118,10 @@ export default function KonsumenScan() {
     await stopScanner();
     try {
       if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader', {
+          formatsToSupport: SUPPORTED_FORMATS,
+          verbose: false,
+        });
       }
       const decodedText = await html5QrCodeRef.current.scanFile(file, true);
       html5QrCodeRef.current.clear();
@@ -135,6 +158,7 @@ export default function KonsumenScan() {
     setInstance(null);
     setScannedGtin(null);
     setScanType(null);
+    setResolvedProduct(null);
     setErrorMsg('');
     setStep('scan');
   };
@@ -236,17 +260,33 @@ export default function KonsumenScan() {
           {step === 'preview' && scanType === 'TIER_2' && scannedGtin && (
             <>
               <div className={styles.qrPlaceholder}>
-                <img src="/assets/logo_qr.png" alt="Barcode Preview" className={styles.qrImage} />
+                {resolvedProduct?.image_url ? (
+                  <img src={resolvedProduct.image_url} alt={resolvedProduct.product_name} className={styles.qrImage} style={{ objectFit: 'contain' }} />
+                ) : (
+                  <img src="/assets/logo_qr.png" alt="Barcode Preview" className={styles.qrImage} />
+                )}
               </div>
 
               <div className={styles.infoContainer}>
                 <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Tipe</span>
-                  <span className={styles.infoValue}>Barcode Scan</span>
+                  <span className={styles.infoLabel}>Nama Produk</span>
+                  <span className={styles.infoValue}>{resolvedProduct?.product_name || 'Produk Tidak Dikenal'}</span>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>GTIN</span>
                   <span className={`${styles.infoValue} ${styles.infoValueMono}`}>{scannedGtin}</span>
+                </div>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={`${styles.infoLabel} ${styles.infoLabelBrand}`}>Kategori</span>
+                    <span className={styles.infoValue}>{resolvedProduct?.category || 'Tidak diketahui'}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={`${styles.infoLabel} ${styles.infoLabelBrand}`}>Sumber</span>
+                    <span className={styles.infoValue} style={{ fontSize: '12px' }}>
+                      {resolvedProduct?.source === 'OFF_AUTO' ? '\uD83C\uDF10 Open Food Facts' : resolvedProduct?.source === 'BRAND_MANUAL' ? '\uD83C\uDFED Brand Terdaftar' : 'Barcode Scan'}
+                    </span>
+                  </div>
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Catatan</span>

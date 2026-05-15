@@ -175,6 +175,26 @@ const AdminTpsDashboard: React.FC = () => {
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    setError('');
+
+    if (!navigator.geolocation) {
+      setError('Browser tidak mendukung geolocation.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setTpsLat(position.coords.latitude.toFixed(7));
+        setTpsLng(position.coords.longitude.toFixed(7));
+      },
+      () => {
+        setError('Gagal mengambil lokasi saat ini. Pastikan izin lokasi browser aktif.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+
   if (loading) {
     return (
       <div className={styles.mobileContainer}>
@@ -230,6 +250,9 @@ const AdminTpsDashboard: React.FC = () => {
                   <input type="number" step="any" className={styles.formInput} value={tpsLng} onChange={(e) => setTpsLng(e.target.value)} required />
                 </div>
               </div>
+              <button type="button" className={styles.locationBtn} onClick={handleUseCurrentLocation}>
+                <Icons.Location /> Gunakan Koordinat Saat Ini
+              </button>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className={styles.formField}>
                   <label className={styles.formLabel}>Radius (m)</label>

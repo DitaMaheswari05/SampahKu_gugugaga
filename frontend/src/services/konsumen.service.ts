@@ -75,6 +75,14 @@ export interface GtinAggregateStats {
   };
 }
 
+export interface ResolvedBarcodeProduct {
+  gtin: string;
+  product_name: string;
+  category: string | null;
+  source: string;
+  image_url: string | null;
+}
+
 // --- Functions ---
 
 /** GET /users/me/collections — Daftar sampah yang pernah dikumpulkan konsumen */
@@ -162,6 +170,25 @@ export const resolveGS1Link = async (url: string) => {
   if (!response.ok || data.status === 'error') {
     throw new Error(data.message || 'Gagal memuat data produk');
   }
+  return data.data;
+};
+
+/**
+ * Resolve barcode GTIN → product info (preview, tanpa merekam scan).
+ * Digunakan untuk menampilkan info produk sebelum konfirmasi.
+ */
+export const resolveBarcode = async (
+  gtin: string
+): Promise<ResolvedBarcodeProduct> => {
+  const response = await fetch(`${API_URL}/products/resolve-barcode/${gtin}`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal memuat info produk');
+  }
+
   return data.data;
 };
 

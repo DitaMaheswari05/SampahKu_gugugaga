@@ -1,17 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import Header from '../components/Header';
 import {
   resolveGS1Link,
   uploadEvidence,
   scanInstance,
   scanBarcode,
+  resolveBarcode,
   getPetugasDashboard,
   ProductInstanceResolved,
+  ResolvedBarcodeProduct,
   ScanPayload,
 } from '../services/petugas.service';
 import styles from '../styles/KonsumenScan.module.css';
+
+/** Supported barcode formats — include all common 1D + QR */
+const SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+];
 
 /** Map TPS type → facility_type value for the scan payload */
 const TPS_TYPE_TO_FACILITY: Record<string, string> = {
@@ -34,6 +47,14 @@ const BIZ_STEP_LABELS: Record<string, string> = {
   disposing: 'Landfill (Disposing)',
 };
 
+const createFallbackBarcodeProduct = (gtin: string): ResolvedBarcodeProduct => ({
+  gtin,
+  product_name: 'Produk Tidak Dikenal',
+  category: 'Tidak diketahui',
+  source: 'OFF_AUTO',
+  image_url: null,
+});
+
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
 export default function PetugasScan() {
@@ -48,6 +69,7 @@ export default function PetugasScan() {
   const [instance, setInstance] = useState<ProductInstanceResolved | null>(null);
   const [scannedGtin, setScannedGtin] = useState<string | null>(null);
   const [scanType, setScanType] = useState<'TIER_1' | 'TIER_2' | null>(null);
+  const [resolvedProduct, setResolvedProduct] = useState<ResolvedBarcodeProduct | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -149,10 +171,18 @@ export default function PetugasScan() {
         setScannedGtin(null);
         setStep('preview');
       } else if (isStandardBarcode) {
-        // Tier 2: Standard barcode (EAN/UPC)
+        // Tier 2: Standard barcode (EAN/UPC) — resolve product info dari OFF
         setScannedGtin(decodedText);
         setScanType('TIER_2');
         setInstance(null);
+        try {
+          const product = await resolveBarcode(decodedText);
+          setResolvedProduct(product);
+        } catch {
+          // Jika preview resolve gagal, tetap lanjut dengan snapshot fallback.
+          // Backend tetap akan resolve/create produk via Open Food Facts saat submit.
+          setResolvedProduct(createFallbackBarcodeProduct(decodedText));
+        }
         setStep('preview');
       } else {
         throw new Error('Format QR/barcode tidak dikenali. Silakan gunakan GS1 Digital Link atau barcode standar (12-14 digit).');
@@ -169,11 +199,14 @@ export default function PetugasScan() {
     setErrorMsg('');
     try {
       if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader', {
+          formatsToSupport: SUPPORTED_FORMATS,
+          verbose: false,
+        });
       }
       await html5QrCodeRef.current.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 10, qrbox: { width: 300, height: 150 }, aspectRatio: 1.0 },
         onScanSuccess,
         (_err: any) => { /* Abaikan error per-frame */ }
       );
@@ -194,7 +227,10 @@ export default function PetugasScan() {
 
     try {
       if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode('qr-reader');
+        html5QrCodeRef.current = new Html5Qrcode('qr-reader', {
+          formatsToSupport: SUPPORTED_FORMATS,
+          verbose: false,
+        });
       }
       const decodedText = await html5QrCodeRef.current.scanFile(file, true);
       html5QrCodeRef.current.clear();
@@ -213,6 +249,12 @@ export default function PetugasScan() {
         setScannedGtin(decodedText);
         setScanType('TIER_2');
         setInstance(null);
+        try {
+          const product = await resolveBarcode(decodedText);
+          setResolvedProduct(product);
+        } catch {
+          setResolvedProduct(createFallbackBarcodeProduct(decodedText));
+        }
         setStep('preview');
       } else {
         throw new Error('Format QR/barcode di gambar tidak dikenali.');
@@ -276,6 +318,7 @@ export default function PetugasScan() {
     setInstance(null);
     setScannedGtin(null);
     setScanType(null);
+    setResolvedProduct(null);
     setErrorMsg('');
     setEvidenceFile(null);
     setStep('scan');
@@ -554,9 +597,39 @@ export default function PetugasScan() {
                 <div style={{ background: '#f3e5f5', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '12px', color: '#6a1b9a', fontWeight: 600, fontFamily: "'Poppins', sans-serif" }}>
                   📊 Tier 2 - Barcode Agregat
                 </div>
+
+                {/* Product image from OFF */}
+                {resolvedProduct?.image_url && (
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <img
+                      src={resolvedProduct.image_url}
+                      alt={resolvedProduct.product_name}
+                      style={{ maxHeight: '120px', borderRadius: '10px', objectFit: 'contain', border: '1px solid #e5e7eb' }}
+                    />
+                  </div>
+                )}
+
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Nama Produk</span>
+                  <span className={styles.infoValue}>
+                    {resolvedProduct?.product_name || 'Produk Tidak Dikenal'}
+                  </span>
+                </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>GTIN / Barcode</span>
                   <span className={`${styles.infoValue} ${styles.infoValueMono}`}>{scannedGtin}</span>
+                </div>
+                <div className={styles.infoGrid}>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Kategori</span>
+                    <span className={styles.infoValue}>{resolvedProduct?.category || 'Tidak diketahui'}</span>
+                  </div>
+                  <div className={styles.infoRow}>
+                    <span className={styles.infoLabel}>Sumber</span>
+                    <span className={styles.infoValue} style={{ fontSize: '12px' }}>
+                      {resolvedProduct?.source === 'OFF_AUTO' ? '🌐 Open Food Facts' : resolvedProduct?.source === 'BRAND_MANUAL' ? '🏭 Brand Terdaftar' : '—'}
+                    </span>
+                  </div>
                 </div>
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', fontStyle: 'italic' }}>
                   📌 Scan agregat untuk semua unit dengan barcode ini

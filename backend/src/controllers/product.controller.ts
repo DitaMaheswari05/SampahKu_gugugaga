@@ -96,6 +96,37 @@ export const getInstanceQR = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Resolve a barcode GTIN → product info (preview only, no scan recorded).
+ * GET /products/resolve-barcode/:gtin
+ * Used by PetugasScan / KonsumenScan to show product details before confirming.
+ */
+export const resolveBarcode = async (req: Request, res: Response) => {
+  const { gtin } = req.params;
+
+  if (!gtin) {
+    return res.status(400).json({ status: 'error', message: 'gtin is required' });
+  }
+
+  try {
+    const product = await ProductService.resolveOrCreateFromBarcode(String(gtin));
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        gtin: product.gtin,
+        product_name: product.product_name,
+        category: product.category,
+        source: product.source,
+        image_url: product.material_passport?.image_url || null,
+        material_passport: product.material_passport,
+      },
+    });
+  } catch (e: any) {
+    console.error('resolveBarcode error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to resolve barcode' });
+  }
+};
+
 export const resolveQR = async (req: Request, res: Response) => {
   const { gtin, batch, serial } = req.query;
 

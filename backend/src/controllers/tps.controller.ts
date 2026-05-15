@@ -88,6 +88,27 @@ export const getTpsPetugas = async (req: Request, res: Response) => {
   }
 };
 
+export const deletePetugas = async (req: Request, res: Response) => {
+  try {
+    if (req.profile?.role !== 'ADMIN_TPS') {
+      return res.status(403).json({ status: 'error', message: 'Hanya ADMIN_TPS.' });
+    }
+
+    const tpsId = req.params.id as string;
+    const petugasId = req.params.petugasId as string;
+
+    if (!petugasId) {
+      return res.status(400).json({ status: 'error', message: 'petugasId wajib diisi.' });
+    }
+
+    const result = await TpsService.deletePetugas(req.profile.id, tpsId, petugasId);
+    return res.json({ status: 'success', data: result });
+  } catch (e: any) {
+    console.error('deletePetugas error:', e);
+    return res.status(400).json({ status: 'error', message: e.message || 'Gagal menghapus akun petugas' });
+  }
+};
+
 export const getPublicTpsList = async (_req: Request, res: Response) => {
   try {
     const list = await TpsService.getPublicTpsList();

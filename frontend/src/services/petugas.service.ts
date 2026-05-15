@@ -72,6 +72,14 @@ export interface ScanPayload {
   coordinates?: { lat: number; lng: number };
 }
 
+export interface ResolvedBarcodeProduct {
+  gtin: string;
+  product_name: string;
+  category: string | null;
+  source: string;
+  image_url: string | null;
+}
+
 // --- Functions ---
 
 export const getPetugasDashboard = async (): Promise<PetugasDashboardData> => {
@@ -181,4 +189,23 @@ export const scanBarcode = async (
   if (!response.ok || data.status === 'error') {
     throw new Error(data.message || 'Gagal menyimpan scan barcode');
   }
+};
+
+/**
+ * Resolve barcode GTIN → product info (preview, tanpa merekam scan).
+ * Digunakan untuk menampilkan info produk sebelum konfirmasi.
+ */
+export const resolveBarcode = async (
+  gtin: string
+): Promise<ResolvedBarcodeProduct> => {
+  const response = await fetch(`${API_URL}/products/resolve-barcode/${gtin}`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal memuat info produk');
+  }
+
+  return data.data;
 };

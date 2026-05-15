@@ -7,12 +7,16 @@ import {
   getProductDetail,
   getInstanceQR,
   resolveQR,
+  resolveBarcode,
 } from '../controllers/product.controller';
 
 const router = Router();
 
 // Endpoint for resolving GS1 Links. Placed here to avoid param collision. Public endpoint.
 router.get('/resolve', resolveQR);
+
+// Resolve barcode GTIN → product info (preview, no scan recorded). Protected.
+router.get('/resolve-barcode/:gtin', protect, resolveBarcode);
 
 // Specific endpoints that shouldn't match /:gtin
 router.get('/instances/:instanceId/qr', protect, getInstanceQR);

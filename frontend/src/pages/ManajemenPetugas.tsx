@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
-import { getMyTps, getTpsPetugas, createPetugas, TpsData, PetugasItem } from '../services/tps.service';
+import { getMyTps, getTpsPetugas, createPetugas, deletePetugas, TpsData, PetugasItem } from '../services/tps.service';
 import styles from '../styles/ManajemenPetugas.module.css';
 
 interface PetugasExtended extends PetugasItem {
-  phone: string;
   area: string;
   totalUpdates: number;
   status: 'ACTIVE' | 'INACTIVE';
@@ -23,52 +22,64 @@ const ManajemenPetugas: React.FC = () => {
   const [petugasEmail, setPetugasEmail] = useState('');
   const [petugasPassword, setPetugasPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const tpsData: TpsData | null = await getMyTps();
-        if (tpsData) {
-          setTpsId(tpsData.id);
-          const petugasData = await getTpsPetugas(tpsData.id);
-          
-          // Map data dari DB dan beri fallback data (mock) untuk field yang belum terdukung BE
-          const mappedPetugas: PetugasExtended[] = petugasData.map((p) => ({
-            ...p,
-            phone: '-', // Fallback (Bisa diganti jika endpoint sudah menyediakan phone_number)
-            area: tpsData.city || 'Tidak diketahui',
-            totalUpdates: 0, // Fallback
-            status: 'ACTIVE' // Default ACTIVE
-          }));
+  const mapPetugas = useCallback((petugasData: PetugasItem[], tpsData: TpsData): PetugasExtended[] =>
+    petugasData.map((p) => ({
+      ...p,
+      area: tpsData.city || 'Tidak diketahui',
+      totalUpdates: 0,
+      status: 'ACTIVE',
+    })), []);
 
-          setPetugasList(mappedPetugas);
-
-          // Kalkulasi Summary (Hanya Active + Total)
-          const activeCount = mappedPetugas.filter(p => p.status === 'ACTIVE').length;
-
-          setStats({
-            active: activeCount,
-            total: mappedPetugas.length,
-          });
-        } else {
-          setError('Anda belum memiliki TPS yang terdaftar.');
-        }
-      } catch (e: any) {
-        setError(e.message || 'Gagal memuat data petugas');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+  const updatePetugasState = useCallback((mappedPetugas: PetugasExtended[]) => {
+    setPetugasList(mappedPetugas);
+    setStats({
+      active: mappedPetugas.filter(p => p.status === 'ACTIVE').length,
+      total: mappedPetugas.length,
+    });
   }, []);
 
-  const handleDelete = (id: string) => {
-    // Fungsi hapus dapat diintegrasikan dengan BE nantinya
-    if(window.confirm('Hapus petugas ini?')) {
-       console.log('Menghapus petugas dengan ID:', id);
+  const loadData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setError('');
+    try {
+      const tpsData: TpsData | null = await getMyTps();
+      if (tpsData) {
+        setTpsId(tpsData.id);
+        const petugasData = await getTpsPetugas(tpsData.id);
+        updatePetugasState(mapPetugas(petugasData, tpsData));
+      } else {
+        setTpsId(null);
+        setPetugasList([]);
+        setStats({ active: 0, total: 0 });
+        setError('Anda belum memiliki TPS yang terdaftar.');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Gagal memuat data petugas');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, [mapPetugas, updatePetugasState]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleDelete = async (id: string) => {
+    if (!tpsId || deletingId) return;
+
+    if(window.confirm('Hapus akun petugas ini? Petugas tidak bisa login lagi dan akan hilang dari daftar TPS.')) {
+      setDeletingId(id);
+      setError('');
+      try {
+        await deletePetugas(tpsId, id);
+        await loadData(false);
+      } catch (e: any) {
+        setError(e.message || 'Gagal menghapus akun petugas');
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -85,11 +96,7 @@ const ManajemenPetugas: React.FC = () => {
       const tpsData = await getMyTps();
       if (tpsData) {
         const petugasData = await getTpsPetugas(tpsData.id);
-        const mappedPetugas: PetugasExtended[] = petugasData.map((p) => ({
-          ...p, phone: '-', area: tpsData.city || 'Tidak diketahui', totalUpdates: 0, status: 'ACTIVE'
-        }));
-        setPetugasList(mappedPetugas);
-        setStats(prev => ({ active: mappedPetugas.filter(p => p.status === 'ACTIVE').length, total: mappedPetugas.length }));
+        updatePetugasState(mapPetugas(petugasData, tpsData));
       }
     } catch (e: any) {
       setError(e.message || 'Gagal membuat akun petugas');
@@ -169,7 +176,6 @@ const ManajemenPetugas: React.FC = () => {
               <tr>
                 <th>Nama Petugas</th>
                 <th>Email</th>
-                <th>No. Telepon</th>
                 <th>Area Tugas</th>
                 <th>Total Update</th>
                 <th>Aksi</th>
@@ -178,7 +184,7 @@ const ManajemenPetugas: React.FC = () => {
             <tbody>
               {petugasList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '24px' }}>
                     Belum ada petugas terdaftar.
                   </td>
                 </tr>
@@ -194,13 +200,18 @@ const ManajemenPetugas: React.FC = () => {
                       </div>
                     </td>
                     <td className={styles.textData}>{petugas.email}</td>
-                    <td className={styles.textData}>{petugas.phone}</td>
                     <td>
                       <span className={styles.badgeArea}>{petugas.area}</span>
                     </td>
                     <td className={styles.textBoldData} style={{ textAlign: 'center' }}>{petugas.totalUpdates}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <button className={styles.btnDelete} onClick={() => handleDelete(petugas.id)} aria-label="Hapus Petugas">
+                      <button
+                        className={styles.btnDelete}
+                        onClick={() => handleDelete(petugas.id)}
+                        aria-label="Hapus Petugas"
+                        disabled={deletingId === petugas.id}
+                        title={deletingId === petugas.id ? 'Menghapus...' : 'Hapus Petugas'}
+                      >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
                         </svg>

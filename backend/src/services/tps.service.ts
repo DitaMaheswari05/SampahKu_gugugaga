@@ -327,6 +327,57 @@ export class TpsService {
   }
 
   /**
+   * Remove a petugas account from this TPS.
+   * The profile is kept for historical activity references, but login access is banned
+   * and the petugas is detached from the TPS so it disappears from management views.
+   */
+  static async deletePetugas(adminId: string, tpsId: string, petugasId: string) {
+    const { data: tps, error: tpsErr } = await supabase
+      .from('tps_facilities')
+      .select('id')
+      .eq('id', tpsId)
+      .eq('admin_id', adminId)
+      .maybeSingle();
+
+    if (tpsErr) throw tpsErr;
+    if (!tps) throw new Error('TPS tidak ditemukan atau Anda bukan admin TPS ini.');
+
+    const { data: petugas, error: petugasErr } = await supabase
+      .from('profiles')
+      .select('id, name, email, role, tps_id')
+      .eq('id', petugasId)
+      .eq('tps_id', tpsId)
+      .eq('role', 'PETUGAS')
+      .maybeSingle();
+
+    if (petugasErr) throw petugasErr;
+    if (!petugas) throw new Error('Petugas tidak ditemukan di TPS ini.');
+
+    const { error: authErr } = await supabase.auth.admin.updateUserById(petugasId, {
+      ban_duration: '876000h',
+      user_metadata: {
+        deleted: true,
+        deleted_at: new Date().toISOString(),
+        previous_role: 'PETUGAS',
+      },
+    });
+
+    if (authErr) throw authErr;
+
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .update({
+        tps_id: null,
+        name: `${petugas.name || 'Petugas'} (Dihapus)`,
+      })
+      .eq('id', petugasId);
+
+    if (profileErr) throw profileErr;
+
+    return { id: petugasId };
+  }
+
+  /**
    * Public listing of all TPS with aggregated stats.
    * Uses the denormalized activities.tps_id for efficient 1-hop aggregation.
    */

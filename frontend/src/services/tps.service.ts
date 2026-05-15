@@ -182,6 +182,21 @@ export const getTpsPetugas = async (tpsId: string): Promise<PetugasItem[]> => {
 };
 
 /**
+ * Hapus akses akun petugas dari TPS tertentu.
+ */
+export const deletePetugas = async (tpsId: string, petugasId: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/tps/${tpsId}/petugas/${petugasId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  const result = await response.json();
+  if (!response.ok || result.status === 'error') {
+    throw new Error(result.message || 'Gagal menghapus akun petugas');
+  }
+};
+
+/**
  * Get daftar TPS publik (tanpa autentikasi).
  */
 export const getPublicTpsList = async (): Promise<any[]> => {

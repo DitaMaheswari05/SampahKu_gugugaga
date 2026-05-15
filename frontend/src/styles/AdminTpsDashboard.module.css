@@ -614,6 +614,27 @@
   padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; font-size: 13px;
 }
 .formInput:focus { border-color: #4C9100; outline: none; }
+.locationBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: -4px 0 12px;
+  border: 1px solid #A7D977;
+  border-radius: 8px;
+  background: #F4FAEE;
+  color: #3F7D00;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.locationBtn svg {
+  width: 16px;
+  height: 16px;
+}
 .modalActions { display: flex; gap: 8px; margin-top: 16px; }
 .btnCancel { flex: 1; padding: 10px; background: transparent; border: 1px solid #D1D5DB; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
 .submitBtn { flex: 1; padding: 10px; background: #4C9100; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 13px; }
