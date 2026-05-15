@@ -93,7 +93,6 @@ const AdminTpsDashboard: React.FC = () => {
   const [tpsLat, setTpsLat] = useState('');
   const [tpsLng, setTpsLng] = useState('');
   const [tpsRadius, setTpsRadius] = useState('200');
-  const [tpsCapacity, setTpsCapacity] = useState('');
   const [tpsActions, setTpsActions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -135,7 +134,6 @@ const AdminTpsDashboard: React.FC = () => {
         address: tpsAddress,
         city: tpsCity,
         province: tpsProvince,
-        capacity_tons_per_day: tpsCapacity ? parseFloat(tpsCapacity) : undefined,
         coordinates: { type: 'Point', coordinates: [parseFloat(tpsLng), parseFloat(tpsLat)] },
         radius_m: parseInt(tpsRadius, 10),
         allowed_actions: tpsActions,
@@ -256,10 +254,6 @@ const AdminTpsDashboard: React.FC = () => {
                 <div className={styles.formField}>
                   <label className={styles.formLabel}>Radius (m)</label>
                   <input type="number" className={styles.formInput} value={tpsRadius} onChange={(e) => setTpsRadius(e.target.value)} required min={50} />
-                </div>
-                <div className={styles.formField}>
-                  <label className={styles.formLabel}>Kapasitas (ton)</label>
-                  <input type="number" step="0.1" className={styles.formInput} value={tpsCapacity} onChange={(e) => setTpsCapacity(e.target.value)} />
                 </div>
               </div>
               <div className={styles.formField}>

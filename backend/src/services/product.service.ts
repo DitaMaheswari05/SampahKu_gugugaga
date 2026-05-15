@@ -10,13 +10,12 @@ export class ProductService {
    * Validates that GTIN prefix is owned by the brand via brand_gtin_prefixes table.
    */
   static async createProduct(brandId: string, payload: {
-    sku: string;
     product_name: string;
     material_passport?: any;
     category?: string;
     weight_grams?: number;
   }) {
-    const { sku, product_name, material_passport, category, weight_grams } = payload;
+    const { product_name, material_passport, category, weight_grams } = payload;
 
     // Verify brand exists
     const { data: profile, error: profErr } = await supabase
@@ -48,7 +47,6 @@ export class ProductService {
       .from('products')
       .insert([{
         gtin,
-        sku,
         brand_id: brandId,
         product_name,
         material_passport: material_passport || {},
@@ -106,20 +104,18 @@ export class ProductService {
     const effectiveQty = identification_type === 'BATCH' ? Math.max(1, Math.min(quantity, 10000)) : 1;
     const now = new Date().toISOString();
 
-    // Insert instances (1 for UNIQUE, quantity for BATCH)
-    const instanceRows = Array.from({ length: effectiveQty }, () => ({
-      product_id: product.id,
-      identification_type,
-      batch_number: batch_number || null,
-      serial_number: serial_number || null,
-      identity_number: parsedIdentity,
-      current_status: 'IN_MARKET',
-      last_updated: now,
-    }));
-
+    // Insert ONE instance row
     const { data: instances, error: iErr } = await supabase
       .from('product_instances')
-      .insert(instanceRows)
+      .insert([{
+        product_id: product.id,
+        identification_type,
+        batch_number: batch_number || null,
+        serial_number: serial_number || null,
+        identity_number: parsedIdentity,
+        current_status: 'IN_MARKET',
+        last_updated: now,
+      }])
       .select();
 
     if (iErr || !instances || instances.length === 0) throw iErr || new Error('Failed to create instances');
@@ -128,8 +124,8 @@ export class ProductService {
 
     // Record commissioning activity for every physical item so batch timelines
     // show the full quantity that was created at market entry.
-    const commissioningActivities = instances.map((row: any) => ({
-      instance_id: row.id,
+    const commissioningActivities = Array.from({ length: effectiveQty }, () => ({
+      instance_id: instance.id,
       actor_id: brandId,
       event_type: 'ObjectEvent',
       biz_step: 'commissioning',
@@ -419,7 +415,6 @@ export class ProductService {
         .from('products')
         .insert([{
           gtin: cleanGtin,
-          sku: null,
           brand_id: null, // OFF products have no brand ownership
           product_name: displayName,
           material_passport: materialPassport,
@@ -442,7 +437,6 @@ export class ProductService {
       .from('products')
       .insert([{
         gtin: cleanGtin,
-        sku: null,
         brand_id: null,
         product_name: 'Unknown Product',
         material_passport: materialPassport,

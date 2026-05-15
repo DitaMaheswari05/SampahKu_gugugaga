@@ -30,8 +30,18 @@ export class AuthService {
             if (user) {
                 await supabase.from('profiles').upsert([
                     { id: user.id, email: user.email, name, role }
-                ], { onConflict: 'id' }).then(({ error: pErr }) => {
+                ], { onConflict: 'id' }).then(async ({ error: pErr }) => {
                     if (pErr) console.error('Failed upserting profile:', pErr);
+                    
+                    if (!pErr && role === 'BRAND') {
+                        const randomPrefix = `899${Math.floor(100 + Math.random() * 900)}`;
+                        const { error: prefErr } = await supabase.from('brand_gtin_prefixes').insert([{
+                            brand_id: user.id,
+                            prefix: randomPrefix,
+                            is_active: true
+                        }]);
+                        if (prefErr) console.error('Failed assigning GTIN prefix:', prefErr);
+                    }
                 });
             }
             return signUpData;
@@ -46,6 +56,14 @@ export class AuthService {
 
             if (pErr) {
                 console.error('Failed upserting profile:', pErr);
+            } else if (role === 'BRAND') {
+                const randomPrefix = `899${Math.floor(100 + Math.random() * 900)}`;
+                const { error: prefErr } = await supabase.from('brand_gtin_prefixes').insert([{
+                    brand_id: user.id,
+                    prefix: randomPrefix,
+                    is_active: true
+                }]);
+                if (prefErr) console.error('Failed assigning GTIN prefix:', prefErr);
             }
         }
 

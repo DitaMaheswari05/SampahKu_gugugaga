@@ -321,7 +321,7 @@ const ProductManagement: React.FC = () => {
                           <div className={styles.productIcon}><PackageIcon /></div>
                           <div className={styles.productInfo}>
                             <span className={styles.productName}>{p.product_name}</span>
-                            <span className={styles.productGtin}>{p.sku}</span>
+                            <span className={styles.productGtin}>{p.gtin}</span>
                           </div>
                         </div>
                       </td>
@@ -463,7 +463,6 @@ interface CreateProductModalProps {
 const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCreated }) => {
   const [form, setForm] = useState({
     product_name: '',
-    sku: '',
     category: '',
     weight_grams: '',
   });
@@ -476,8 +475,8 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.product_name || !form.sku) {
-      setError('Nama Produk dan SKU wajib diisi');
+    if (!form.product_name) {
+      setError('Nama Produk wajib diisi');
       return;
     }
     setSaving(true);
@@ -485,7 +484,6 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
     try {
       await createProduct({
         product_name: form.product_name,
-        sku: form.sku,
         category: form.category || undefined,
         weight_grams: form.weight_grams ? parseInt(form.weight_grams, 10) : undefined,
         material_passport: {
@@ -526,17 +524,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ onClose, onCrea
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>SKU (Stock Keeping Unit)</label>
-            <input
-              className={styles.formInput}
-              placeholder="Contoh: BTL-600ML"
-              value={form.sku}
-              onChange={(e) => handleChange('sku', e.target.value)}
-              id="input-sku"
-              required
-            />
-          </div>
+
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Kategori</label>

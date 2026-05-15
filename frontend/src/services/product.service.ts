@@ -28,7 +28,6 @@ export interface MaterialPassport {
 
 export interface Product {
   gtin: string;
-  sku: string;
   brand_id: string;
   product_name: string;
   material_passport: MaterialPassport;
@@ -62,7 +61,6 @@ export interface InstanceCreateResult {
 }
 
 export interface CreateProductPayload {
-  sku: string;
   product_name: string;
   category?: string;
   weight_grams?: number;

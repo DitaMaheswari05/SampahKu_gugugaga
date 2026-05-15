@@ -17,7 +17,6 @@ export interface TpsData {
   address: string;
   city: string | null;
   province: string | null;
-  capacity_tons_per_day: number;
   coordinates: {
     type: string;
     coordinates: [number, number]; // [lng, lat]
@@ -34,7 +33,6 @@ export interface CreateTpsPayload {
   address: string;
   city: string;
   province: string;
-  capacity_tons_per_day?: number;
   coordinates: {
     type: string;
     coordinates: [number, number]; // [lng, lat]
