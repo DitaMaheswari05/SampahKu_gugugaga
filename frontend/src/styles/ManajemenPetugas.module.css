@@ -230,3 +230,50 @@
 .btnDelete:hover {
   background: #fef2f2;
 }
+
+/* Header Add Button */
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addPetugasBtn {
+  background: #4C9100;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Modal and Forms */
+.modalOverlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+  z-index: 1000; padding: 16px;
+}
+.modalCard {
+  background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 360px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+.modalHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modalTitle { font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #101828; margin: 0; }
+.modalCloseBtn { background: none; border: none; font-size: 20px; cursor: pointer; color: #737373; }
+.formField { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.formLabel { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; color: #4A5565; }
+.formInput, .formSelect, .formTextarea {
+  padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; font-size: 13px;
+}
+.formInput:focus { border-color: #4C9100; outline: none; }
+.modalActions { display: flex; gap: 8px; margin-top: 16px; }
+.btnCancel { flex: 1; padding: 10px; background: transparent; border: 1px solid #D1D5DB; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.submitBtn { flex: 1; padding: 10px; background: #4C9100; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; font-size: 13px; }
+.submitBtn:disabled { opacity: 0.6; }

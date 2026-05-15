@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import { getMyTps, getTpsPetugas, TpsData, PetugasItem } from '../services/tps.service';
+import { getMyTps, getTpsPetugas, createPetugas, TpsData, PetugasItem } from '../services/tps.service';
 import styles from '../styles/ManajemenPetugas.module.css';
 
 interface PetugasExtended extends PetugasItem {
@@ -16,6 +16,14 @@ const ManajemenPetugas: React.FC = () => {
   const [error, setError] = useState('');
   const [petugasList, setPetugasList] = useState<PetugasExtended[]>([]);
   const [stats, setStats] = useState({ active: 0, inactive: 0, total: 0, points: 0 });
+  const [tpsId, setTpsId] = useState<string | null>(null);
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [petugasName, setPetugasName] = useState('');
+  const [petugasEmail, setPetugasEmail] = useState('');
+  const [petugasPassword, setPetugasPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -24,6 +32,7 @@ const ManajemenPetugas: React.FC = () => {
       try {
         const tpsData: TpsData | null = await getMyTps();
         if (tpsData) {
+          setTpsId(tpsData.id);
           const petugasData = await getTpsPetugas(tpsData.id);
           
           // Map data dari DB dan beri fallback data (mock) untuk field yang belum terdukung BE
@@ -69,6 +78,32 @@ const ManajemenPetugas: React.FC = () => {
     }
   };
 
+  const handleCreatePetugas = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tpsId) return;
+    setSubmitting(true);
+    try {
+      await createPetugas(tpsId, { name: petugasName, email: petugasEmail, password: petugasPassword });
+      setPetugasName(''); setPetugasEmail(''); setPetugasPassword('');
+      setShowModal(false);
+      
+      // Reload Data
+      const tpsData = await getMyTps();
+      if (tpsData) {
+        const petugasData = await getTpsPetugas(tpsData.id);
+        const mappedPetugas: PetugasExtended[] = petugasData.map((p) => ({
+          ...p, phone: '-', area: tpsData.city || 'Tidak diketahui', totalUpdates: 0, points: 0, status: 'ACTIVE'
+        }));
+        setPetugasList(mappedPetugas);
+        setStats(prev => ({ ...prev, active: mappedPetugas.filter(p => p.status === 'ACTIVE').length, inactive: mappedPetugas.filter(p => p.status === 'INACTIVE').length, total: mappedPetugas.length }));
+      }
+    } catch (e: any) {
+      setError(e.message || 'Gagal membuat akun petugas');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -86,8 +121,18 @@ const ManajemenPetugas: React.FC = () => {
 
       <main className={styles.content}>
         <div className={styles.headerSection}>
-          <h1 className={styles.title}>Manajemen Akun Petugas</h1>
-          <p className={styles.subtitle}>Kelola akun petugas pengelola sampah</p>
+          <div className={styles.headerTop}>
+            <div>
+              <h1 className={styles.title}>Manajemen Akun Petugas</h1>
+              <p className={styles.subtitle}>Kelola akun petugas pengelola sampah</p>
+            </div>
+            {tpsId && (
+              <button className={styles.addPetugasBtn} onClick={() => setShowModal(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                Tambah Petugas
+              </button>
+            )}
+          </div>
         </div>
 
         {error && <div className={styles.errorBanner}>{error}</div>}
@@ -209,6 +254,38 @@ const ManajemenPetugas: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* ── Add Petugas Modal ── */}
+        {showModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+            <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.modalTitle}>Tambah Petugas Baru</h3>
+                <button className={styles.modalCloseBtn} onClick={() => setShowModal(false)}>&times;</button>
+              </div>
+              <form onSubmit={handleCreatePetugas}>
+                <div className={styles.formField}>
+                  <label className={styles.formLabel}>Nama Lengkap</label>
+                  <input type="text" className={styles.formInput} placeholder="Nama petugas" value={petugasName} onChange={e => setPetugasName(e.target.value)} required />
+                </div>
+                <div className={styles.formField}>
+                  <label className={styles.formLabel}>Email</label>
+                  <input type="email" className={styles.formInput} placeholder="email@contoh.com" value={petugasEmail} onChange={e => setPetugasEmail(e.target.value)} required />
+                </div>
+                <div className={styles.formField}>
+                  <label className={styles.formLabel}>Password</label>
+                  <input type="password" className={styles.formInput} placeholder="Minimal 6 karakter" value={petugasPassword} onChange={e => setPetugasPassword(e.target.value)} required minLength={6} />
+                </div>
+                <div className={styles.modalActions}>
+                  <button type="button" className={styles.btnCancel} onClick={() => setShowModal(false)}>Batal</button>
+                  <button type="submit" className={styles.submitBtn} disabled={submitting}>
+                    {submitting ? 'Menyimpan...' : 'Simpan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
