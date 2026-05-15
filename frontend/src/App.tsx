@@ -11,6 +11,7 @@ import DashboardCompany from './pages/Dashboard_Company';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
 import DetailSampah from './pages/DetailSampah';
+import AdminTpsDashboard from './pages/AdminTpsDashboard';
 import { ROLES } from './constants/roles';
 import { getHomeRouteByRole } from './constants/routes';
 
@@ -81,6 +82,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PETUGAS]}>
               <PetugasDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Routes - Role: ADMIN_TPS */}
+        <Route
+          path="/admin-tps/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.ADMIN_TPS]}>
+              <AdminTpsDashboard />
             </ProtectedRoute>
           }
         />

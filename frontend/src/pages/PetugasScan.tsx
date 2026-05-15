@@ -6,16 +6,43 @@ import {
   resolveGS1Link,
   uploadEvidence,
   scanInstance,
+  getPetugasDashboard,
   ProductInstanceResolved,
   ScanPayload,
 } from '../services/petugas.service';
 import styles from '../styles/KonsumenScan.module.css';
 
+/** Map TPS type → facility_type value for the scan payload */
+const TPS_TYPE_TO_FACILITY: Record<string, string> = {
+  'TPS': 'TPS',
+  'TPS3R': 'TPS',
+  'Bank Sampah': 'BANK_SAMPAH',
+  'TPST': 'TPS',
+  'TPA': 'TPA',
+  'Pengepul': 'PENGEPUL',
+  'Recycler': 'RECYCLER',
+};
+
+/** Human-readable labels for biz_step values */
+const BIZ_STEP_LABELS: Record<string, string> = {
+  collecting: 'Pickup (Collecting)',
+  receiving: 'Terima di Fasilitas (Receiving)',
+  inspecting: 'Sortir (Inspecting)',
+  shipping: 'Kirim (Shipping)',
+  recycling: 'Daur Ulang (Recycling)',
+  disposing: 'Landfill (Disposing)',
+};
 
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
 export default function PetugasScan() {
   const navigate = useNavigate();
+
+  // TPS context
+  const [tpsName, setTpsName] = useState<string | null>(null);
+  const [tpsType, setTpsType] = useState<string | null>(null);
+  const [allowedActions, setAllowedActions] = useState<string[]>([]);
+  const [tpsLoading, setTpsLoading] = useState(true);
 
   // UI & Scan States
   const [step, setStep] = useState<ScanStep>('scan');
@@ -24,20 +51,71 @@ export default function PetugasScan() {
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  const [bizStep, setBizStep] = useState('collecting');
-  const [locationName, setLocationName] = useState('');
-  const [facilityType, setFacilityType] = useState('TPS');
+  const [bizStep, setBizStep] = useState('');
   const [materialType, setMaterialType] = useState('Plastik PET');
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+
+  // Geolocation
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoStatus, setGeoStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [geoError, setGeoError] = useState('');
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cleanup kamera saat komponen di-unmount
+  // ── Fetch TPS context on mount ──
   useEffect(() => {
-    return () => {
-      stopScanner();
+    const loadTpsContext = async () => {
+      setTpsLoading(true);
+      try {
+        const data = await getPetugasDashboard();
+        if (data.tps) {
+          setTpsName(data.tps.name);
+          setTpsType(data.tps.type);
+          setAllowedActions(data.tps.allowed_actions);
+          // Default biz_step to first allowed action
+          if (data.tps.allowed_actions.length > 0) {
+            setBizStep(data.tps.allowed_actions[0]);
+          }
+        }
+      } catch (e: any) {
+        console.error('Failed to load TPS context:', e);
+      } finally {
+        setTpsLoading(false);
+      }
     };
+    loadTpsContext();
+  }, []);
+
+  // ── Capture geolocation on mount ──
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGeoStatus('error');
+      setGeoError('Browser tidak mendukung geolocation.');
+      return;
+    }
+
+    // Watch position for continuous updates
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeoStatus('ok');
+        setGeoError('');
+      },
+      (err) => {
+        console.error('Geolocation error:', err);
+        setGeoStatus('error');
+        setGeoError('Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  // ── Cleanup camera on unmount ──
+  useEffect(() => {
+    return () => { stopScanner(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,7 +166,6 @@ export default function PetugasScan() {
     }
   };
 
-  // Scan dari Upload File Gambar
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -116,10 +193,14 @@ export default function PetugasScan() {
     }
   };
 
-  // Submit Aktivitas Petugas
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!instance) return;
+
+    if (geoStatus !== 'ok') {
+      setErrorMsg('GPS belum aktif. Pastikan izin lokasi diberikan sebelum submit.');
+      return;
+    }
 
     setLoading(true);
     setErrorMsg('');
@@ -129,12 +210,15 @@ export default function PetugasScan() {
         evidence_url = await uploadEvidence(evidenceFile);
       }
 
+      const facilityType = TPS_TYPE_TO_FACILITY[tpsType || ''] || 'TPS';
+
       const payload: ScanPayload = {
         biz_step: bizStep,
-        location_name: locationName,
+        location_name: tpsName || '',
         facility_type: facilityType,
         material_type: bizStep === 'inspecting' ? materialType : undefined,
         evidence_url,
+        coordinates: geoCoords || undefined,
       };
 
       await scanInstance(instance.id, payload);
@@ -151,8 +235,25 @@ export default function PetugasScan() {
     setInstance(null);
     setErrorMsg('');
     setEvidenceFile(null);
-    setLocationName('');
     setStep('scan');
+  };
+
+  // Derive GPS indicator style
+  const gpsIndicatorStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '12px',
+    fontWeight: 600,
+    padding: '5px 12px',
+    borderRadius: '20px',
+    fontFamily: "'Poppins', sans-serif",
+    ...(geoStatus === 'ok'
+      ? { background: '#e8f5e9', color: '#2e7d32' }
+      : geoStatus === 'loading'
+        ? { background: '#fff3e0', color: '#e65100' }
+        : { background: '#fef2f2', color: '#dc2626' }
+    ),
   };
 
   return (
@@ -162,9 +263,49 @@ export default function PetugasScan() {
       <main className={styles.content}>
         <div className={styles.headerText}>
           <h1 className={styles.title}>Scanner Petugas</h1>
-          <p className={styles.subtitle}>Pindai QR sampah untuk memantau dan memperbarui status.</p>
+          <p className={styles.subtitle}>Pindai QR sampah untuk memperbarui status.</p>
         </div>
 
+        {/* TPS Context Banner */}
+        {!tpsLoading && tpsName && (
+          <div style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)',
+            borderRadius: '14px',
+            padding: '14px 16px',
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxSizing: 'border-box',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#1b5e20', fontFamily: "'Poppins', sans-serif" }}>
+                  {tpsName}
+                </div>
+                <div style={{ fontSize: '11px', color: '#388e3c', fontFamily: "'Poppins', sans-serif" }}>
+                  {tpsType}
+                </div>
+              </div>
+            </div>
+            <span style={gpsIndicatorStyle}>
+              {geoStatus === 'ok' ? '● GPS OK' : geoStatus === 'loading' ? '◌ GPS...' : '✕ GPS Gagal'}
+            </span>
+          </div>
+        )}
+
+        {!tpsLoading && !tpsName && (
+          <div className={styles.errorAlert} style={{ marginBottom: '16px' }}>
+            Anda belum terikat ke TPS manapun. Hubungi Admin TPS Anda.
+          </div>
+        )}
+
+        {geoStatus === 'error' && <div className={styles.errorAlert}>{geoError}</div>}
         {errorMsg && step === 'scan' && <div className={styles.errorAlert}>{errorMsg}</div>}
 
         <div className={styles.card}>
@@ -186,8 +327,8 @@ export default function PetugasScan() {
               </div>
 
               {!isCameraOpen ? (
-                <button className={styles.btnPrimary} onClick={startScanner}>
-                  Mulai Pemindaian
+                <button className={styles.btnPrimary} onClick={startScanner} disabled={!tpsName || tpsLoading}>
+                  {tpsLoading ? 'Memuat TPS...' : !tpsName ? 'Tidak Terikat TPS' : 'Mulai Pemindaian'}
                 </button>
               ) : (
                 <button
@@ -202,6 +343,7 @@ export default function PetugasScan() {
               <button
                 className={styles.btnSecondary}
                 onClick={() => fileInputRef.current?.click()}
+                disabled={!tpsName || tpsLoading}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -245,40 +387,79 @@ export default function PetugasScan() {
               <form onSubmit={handleSubmit} className={styles.formGroup}>
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Aksi / Biz Step</label>
-                  <select value={bizStep} onChange={e => setBizStep(e.target.value)} required className={styles.inputStyle}>
-                    <option value="collecting">Pickup (Collecting)</option>
-                    <option value="receiving">Terima di Fasilitas (Receiving)</option>
-                    <option value="inspecting">Sortir (Inspecting)</option>
-                    <option value="shipping">Kirim (Shipping)</option>
-                    <option value="recycling">Daur Ulang (Recycling)</option>
-                    <option value="disposing">Landfill (Disposing)</option>
-                  </select>
-                </div>
-
-                <div className={styles.formField}>
-                  <label className={styles.infoLabel}>Nama Lokasi</label>
-                  <input
-                    type="text"
-                    value={locationName}
-                    onChange={e => setLocationName(e.target.value)}
-                    placeholder="Contoh: TPS Kelurahan X"
-                    required
-                    className={styles.inputStyle}
-                  />
-                </div>
-
-                {['receiving', 'collecting', 'inspecting', 'shipping', 'recycling', 'disposing'].includes(bizStep) && (
-                  <div className={styles.formField}>
-                    <label className={styles.infoLabel}>Tipe Fasilitas</label>
-                    <select value={facilityType} onChange={e => setFacilityType(e.target.value)} required className={styles.inputStyle}>
-                      <option value="TPS">TPS</option>
-                      <option value="BANK_SAMPAH">Bank Sampah</option>
-                      <option value="PENGEPUL">Pengepul</option>
-                      <option value="TPA">TPA</option>
-                      <option value="RECYCLER">Pabrik Daur Ulang</option>
+                  {allowedActions.length > 0 ? (
+                    <select value={bizStep} onChange={e => setBizStep(e.target.value)} required className={styles.inputStyle}>
+                      {allowedActions.map((action) => (
+                        <option key={action} value={action}>
+                          {BIZ_STEP_LABELS[action] || action}
+                        </option>
+                      ))}
                     </select>
+                  ) : (
+                    <div style={{ padding: '12px', background: '#fef2f2', borderRadius: '12px', fontSize: '13px', color: '#dc2626' }}>
+                      TPS Anda tidak memiliki aksi yang diperbolehkan.
+                    </div>
+                  )}
+                </div>
+
+                {/* Lokasi otomatis dari TPS — ditampilkan sebagai info, tidak bisa diedit */}
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>Lokasi</label>
+                  <div style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    background: '#f3f4f6',
+                    fontSize: '14px',
+                    fontFamily: "'Poppins', sans-serif",
+                    color: '#374151',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4caf50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {tpsName || '-'} ({tpsType || '-'})
                   </div>
-                )}
+                </div>
+
+                {/* GPS status */}
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>GPS</label>
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    background: geoStatus === 'ok' ? '#f0fdf4' : geoStatus === 'loading' ? '#fffbeb' : '#fef2f2',
+                    fontSize: '13px',
+                    fontFamily: "'Poppins', sans-serif",
+                    color: geoStatus === 'ok' ? '#166534' : geoStatus === 'loading' ? '#92400e' : '#991b1b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    {geoStatus === 'ok' && geoCoords && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>📍</span>
+                        {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                      </>
+                    )}
+                    {geoStatus === 'loading' && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>⏳</span>
+                        Mendapatkan lokasi GPS...
+                      </>
+                    )}
+                    {geoStatus === 'error' && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>❌</span>
+                        GPS tidak tersedia — scan tidak bisa dilakukan
+                      </>
+                    )}
+                  </div>
+                </div>
 
                 {bizStep === 'inspecting' && (
                   <div className={styles.formField}>
@@ -305,8 +486,12 @@ export default function PetugasScan() {
                 </div>
 
                 <div className={styles.formActions}>
-                  <button type="submit" className={styles.btnPrimary} disabled={loading}>
-                    {loading ? 'Menyimpan...' : 'Simpan & Dapatkan Poin'}
+                  <button
+                    type="submit"
+                    className={styles.btnPrimary}
+                    disabled={loading || geoStatus !== 'ok' || allowedActions.length === 0}
+                  >
+                    {loading ? 'Menyimpan...' : geoStatus !== 'ok' ? 'Menunggu GPS...' : 'Simpan Pembaruan'}
                   </button>
                   <button type="button" className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
                     Batal / Pindai Ulang
@@ -327,7 +512,7 @@ export default function PetugasScan() {
               </div>
               <div>
                 <h2 className={styles.statusTitle}>Berhasil!</h2>
-                <p className={styles.statusDesc}>Status sampah berhasil diperbarui. Poin telah ditambahkan ke akun Anda!</p>
+                <p className={styles.statusDesc}>Status sampah berhasil diperbarui.</p>
               </div>
               <div style={{ width: '100%', marginTop: '10px' }}>
                 <button className={styles.btnPrimary} onClick={handleRetake}>

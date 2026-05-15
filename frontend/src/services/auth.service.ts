@@ -14,7 +14,7 @@ export interface UserProfile {
   email: string;
   name: string;
   role: string;
-  points: number;
+  tps_id?: string;
   created_at: string;
 }
 

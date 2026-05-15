@@ -26,11 +26,16 @@
 
 | Role | Nilai di DB | Deskripsi | Aksi Utama |
 |---|---|---|---|
-| **KONSUMEN** | `KONSUMEN` | Pengguna akhir yang membuang sampah | Scan QR produk, lihat riwayat & kontribusi, kumpulkan poin |
-| **PETUGAS** | `PETUGAS` | Pengelola sampah di lapangan (TPS, bank sampah, recycler) | Scan QR sampah, update status pemrosesan, terima reward poin |
+| **KONSUMEN** | `KONSUMEN` | Pengguna akhir (opsional scan) | Scan QR produk (opsional), lihat transparansi perjalanan sampah |
+| **ADMIN_TPS** | `ADMIN_TPS` | Kepala TPS / pengelola fasilitas | Daftar TPS resmi, buat akun petugas, monitor performa TPS |
+| **PETUGAS** | `PETUGAS` | Petugas lapangan terikat 1 TPS | Scan QR sampah, update status — terbatas pada `allowed_actions` TPS-nya |
 | **BRAND** | `BRAND` | Produsen/perusahaan pemilik produk | Daftarkan produk (GTIN), pantau daur ulang produk mereka, lihat data kepatuhan |
 
 > **Penting**: `profiles.id` adalah UUID yang sama dengan `auth.users.id` dari Supabase Auth. Tabel `profiles` adalah ekstensi dari tabel auth bawaan Supabase.
+
+> **Catatan TPS-Centric**: Sistem **tidak bergantung pada konsumen**. Jika konsumen tidak scan, petugas tetap bisa langsung memindai produk. Petugas hanya bisa dibuat oleh ADMIN_TPS dan terikat ke 1 TPS. Setiap scan petugas divalidasi secara geo-fencing (harus di dalam radius TPS).
+
+> **Catatan Reward**: Sistem poin/reward sudah **DIHAPUS TOTAL**. Tidak ada tabel `point_history`, tidak ada kolom `profiles.points`. Value ke konsumen = transparansi. Value ke TPS = akses data dan dana EPR.
 
 ---
 
@@ -167,61 +172,73 @@ auth.users (Supabase built-in)
     │
     └──► profiles (id FK → auth.users.id)
               │
+              ├──► tps_facilities (admin_id FK → profiles.id) [role: ADMIN_TPS]
+              │         │
+              │         └──► profiles.tps_id FK → tps_facilities.id [role: PETUGAS]
+              │
               ├──► products (brand_id FK → profiles.id) [role: BRAND]
               │         │
               │         └──► product_instances (product_id FK → products.id)
               │                     │
-              │                     ├──► activities (instance_id FK)
-              │                     │         │
-              │                     │         └──► point_history (activity_id FK)
-              │                     │
-              │                     └──► user_collections (instance_id FK)
+              │                     └──► activities (instance_id FK)
               │
-              ├──► activities (actor_id FK → profiles.id) [role: PETUGAS/KONSUMEN]
-              ├──► point_history (user_id FK → profiles.id)
-              └──► user_collections (user_id FK → profiles.id)
+              └──► activities (actor_id FK → profiles.id) [role: PETUGAS/KONSUMEN]
 ```
 
 ### Tabel Detail
 
 #### `profiles`
-Ekstensi dari `auth.users`. Dibuat saat user register; backend sekarang melakukan insert/`upsert` eksplisit.
+Ekstensi dari `auth.users`. Dibuat saat user register; backend melakukan insert/`upsert` eksplisit.
 ```sql
 id           uuid PK → auth.users.id
 email        text UNIQUE NOT NULL
 name         text NOT NULL
-role         text CHECK (role IN ('KONSUMEN', 'PETUGAS', 'BRAND'))
-points       integer DEFAULT 0    -- total poin akumulasi
-gtin_prefix  varchar(10)          -- (Hanya untuk BRAND) Prefix GS1 perusahaan
+role         text CHECK (role IN ('KONSUMEN', 'PETUGAS', 'ADMIN_TPS', 'BRAND'))
+tps_id       uuid FK → tps_facilities.id  -- (Hanya PETUGAS) TPS tempat petugas bertugas
 created_at   timestamptz
 ```
+
+> **⚠️ DIHAPUS**: Kolom `points` dan `gtin_prefix` sudah dihapus. Tabel `point_history` dan `user_collections` sudah di-DROP.
+
+#### `tps_facilities` (BARU)
+Data TPS resmi yang terdaftar di platform. Didaftarkan oleh ADMIN_TPS.
+```sql
+id              uuid PK
+name            text NOT NULL               -- Nama TPS, misal "TPS3R Kelurahan Menteng"
+type            text NOT NULL               -- Tipe bebas: TPS, TPS3R, Bank Sampah, TPST, TPA, Pengepul, Recycler
+address         text NOT NULL               -- Alamat lengkap
+coordinates     jsonb NOT NULL              -- GeoJSON Point: { "type": "Point", "coordinates": [lng, lat] }
+radius_m        integer NOT NULL DEFAULT 200 -- Radius geofence (meter). Petugas harus dalam radius ini saat scan.
+allowed_actions text[] NOT NULL DEFAULT '{}' -- biz_step yang boleh dilakukan petugas TPS ini
+admin_id        uuid NOT NULL FK → profiles.id  -- ADMIN_TPS yang mengelola (1:1)
+created_at      timestamptz
+```
+
+**Relasi**: 1 ADMIN_TPS : 1 TPS. 1 TPS : banyak PETUGAS (via `profiles.tps_id`).
+
+**Geo-verification**: Saat petugas scan, backend menghitung jarak Haversine antara GPS petugas dan `coordinates` TPS. Jika jarak > `radius_m`, scan **ditolak**.
+
+**Contoh `allowed_actions` per tipe TPS**:
+| Tipe | allowed_actions |
+|------|----------------|
+| TPS | `['collecting', 'receiving']` |
+| TPS3R | `['collecting', 'receiving', 'inspecting', 'shipping']` |
+| Bank Sampah | `['receiving', 'inspecting', 'recycling']` |
+| TPA | `['receiving', 'disposing']` |
+| Recycler | `['receiving', 'inspecting', 'recycling']` |
 
 #### `products`
 Katalog produk yang didaftarkan oleh BRAND.
 ```sql
-id               uuid PK      -- ID produk internal
-gtin             varchar UNIQUE -- Global Trade Item Number (gtin_prefix + sku)
-sku              varchar      -- Stock Keeping Unit (diinput oleh brand)
+id               uuid PK
+gtin             varchar UNIQUE
+sku              varchar
 brand_id         uuid FK → profiles.id
 product_name     text NOT NULL
-material_passport jsonb NOT NULL  -- JSON-LD: komposisi material, recycling info, DPP data
-category         text             -- kategori produk (plastik, kertas, dll)
-weight_grams     integer          -- berat produk dalam gram
+material_passport jsonb NOT NULL
+category         text
+weight_grams     integer
 created_at       timestamptz
-```
-
-**Contoh `material_passport` (JSON-LD / DPP compatible)**:
-```json
-{
-  "@context": "https://schema.org/",
-  "@type": "Product",
-  "material": [
-    { "name": "PET Plastic", "percentage": 80, "recyclable": true },
-    { "name": "Label Paper", "percentage": 20, "recyclable": false }
-  ],
-  "recyclingInstructions": "Cuci bersih, lepas label, buang ke bank sampah plastik",
-  "carbonFootprint": "0.5 kg CO2e"
-}
 ```
 
 #### `product_instances`
@@ -230,171 +247,76 @@ Representasi fisik dari sebuah produk (satu unit atau satu batch).
 id                  uuid PK
 product_id          uuid FK → products.id
 identification_type text CHECK IN ('BATCH', 'UNIQUE')
-  -- BATCH: satu QR untuk satu batch produksi (banyak unit)
-  -- UNIQUE: satu QR per unit fisik
-batch_number        text   -- diisi jika BATCH
-serial_number       text   -- diisi jika UNIQUE
+batch_number        text
+serial_number       text
 current_status      text DEFAULT 'IN_MARKET'
 last_updated        timestamptz
 ```
 
-**Status lifecycle `current_status`** — dirancang mengikuti rantai pengelolaan sampah nyata di Indonesia:
+**Status lifecycle `current_status`** — biz_step bisa melompat (tidak harus linear):
 
 ```
 IN_MARKET
-    │  (Konsumen scan & buang)
-    ▼
-DISCARDED          ← Konsumen scan produk, konfirmasi dibuang
     │
-    ├──► [Jalur A: Via Gerobak & TPS]
+    ├──► [Jalur A: Konsumen scan dulu]
     │       │
-    │       ├──► PICKED_UP   (Petugas gerobak ambil dari rumah)
-    │       │       │
-    │       ├──► AT_TPS      (Sampah tiba di TPS)
-    │       │       │
-    │       ├──► SORTED      (Petugas TPS sortir sampah)
-    │       │       │
-    │       ├──► IN_TRANSIT  (Dimuat ke truk pengangkut)
-    │       │       │
-    │       └──► AT_FACILITY (Tiba di Bank Sampah / Pengepul / TPA)
-    │               │
-    │               ├──► RECYCLED
-    │               └──► DISPOSED
+    │       ▼
+    │   DISCARDED (konsumen scan opsional)
+    │       │
+    │       ▼
+    ├──► PICKED_UP → AT_TPS → SORTED → IN_TRANSIT → AT_FACILITY → RECYCLED/DISPOSED
     │
-    └──► [Jalur B: Konsumen Langsung ke Bank Sampah]
+    ├──► [Jalur B: Petugas langsung scan]
+    │       │
+    │       ▼
+    │   PICKED_UP → ... (tanpa DISCARDED)
+    │
+    └──► [Jalur C: Langsung Bank Sampah]
             │
-            ├──► AT_FACILITY (Bank sampah langsung terima dari konsumen)
-            │       │
-            └──► RECYCLED
+            ▼
+        AT_FACILITY → RECYCLED
 ```
-
-| Status | Aktor Scan | Lokasi Scan | Deskripsi |
-|---|---|---|---|
-| `IN_MARKET` | — | — | Produk beredar di pasaran, belum dibuang |
-| `DISCARDED` | KONSUMEN | Rumah / tempat pembuangan | Konsumen scan & konfirmasi produk dibuang |
-| `PICKED_UP` | PETUGAS | Gerobak / titik kumpul RT | Petugas gerobak/RT mengambil sampah |
-| `AT_TPS` | PETUGAS | TPS (Tempat Penampungan Sementara) | Sampah tiba di TPS |
-| `SORTED` | PETUGAS | TPS / Bank Sampah | Sampah sudah disortir berdasarkan jenis |
-| `IN_TRANSIT` | PETUGAS | Truk DLH / kendaraan pengangkut | Sampah dimuat & dikirim ke fasilitas akhir |
-| `AT_FACILITY` | PETUGAS | Bank Sampah / Pengepul / TPA | Sampah diterima di fasilitas pengolahan akhir |
-| `RECYCLED` | PETUGAS | Fasilitas daur ulang | Proses daur ulang selesai |
-| `DISPOSED` | PETUGAS | TPA | Sampah masuk landfill (tidak dapat didaur ulang) |
-
-> **Catatan desain**: Sistem **tidak boleh memaksa alur linear yang kaku**. `current_status` hanya menyimpan status terakhir. Backend harus memvalidasi transisi state yang diizinkan (misal: dari `DISCARDED` boleh ke `PICKED_UP` atau langsung `AT_FACILITY`). Di Supabase, akan ada `CHECK` constraint untuk membatasi nilai yang valid.
 
 #### `activities`
 Inti sistem: setiap event dalam perjalanan sampah. Mengikuti standar **EPCIS 2.0**.
 ```sql
 id              uuid PK
 instance_id     uuid FK → product_instances.id
-actor_id        uuid FK → profiles.id  -- siapa yang melakukan aksi ini
-event_type      text DEFAULT 'ObjectEvent'  -- EPCIS event type
-biz_step        text   -- EPCIS bizStep (lihat nilai di bawah)
-location_name   text   -- nama lokasi human-readable
+actor_id        uuid FK → profiles.id
+event_type      text DEFAULT 'ObjectEvent'
+biz_step        text
+location_name   text
 facility_type   text CHECK (facility_type IN ('RUMAH', 'TPS', 'BANK_SAMPAH', 'PENGEPUL', 'TPA', 'RECYCLER'))
 coordinates     jsonb  -- { "lat": -6.200, "lng": 106.816 }
-epcis_body      jsonb  -- full EPCIS 2.0 event payload (standar lengkap)
-  -- Catatan: Untuk biz_step 'inspecting' (SORTED), simpan jenis material (plastik, kertas, dll) ke dalam epcis_body atau sebagai JSON key terpisah
+epcis_body      jsonb
 timestamp       timestamptz DEFAULT now()
-blockchain_hash text   -- hash transaksi SHA-256 dari payload (simulasi Hyperledger Fabric)
-evidence_url    text   -- URL foto bukti (di-upload via backend ke Supabase Storage)
+blockchain_hash text   -- SHA-256 integrity hash (bukan blockchain per-transaksi)
+evidence_url    text
 ```
 
-**Nilai `biz_step` (EPCIS 2.0 Business Step)** — dipetakan ke status lifecycle:
+**Nilai `biz_step`** — dipetakan ke status lifecycle:
 | biz_step | Status Baru | Aktor | Deskripsi |
 |---|---|---|---|
-| `commissioning` | `IN_MARKET` | BRAND | Produk resmi didaftarkan & masuk pasar |
-| `discarding` | `DISCARDED` | KONSUMEN | Konsumen scan & konfirmasi buang produk (Custom EPCIS untuk pisah dari disposing landfill) |
-| `collecting` | `PICKED_UP` | PETUGAS | Petugas gerobak/RT mengambil dari titik kumpul |
-| `receiving` (TPS) | `AT_TPS` | PETUGAS | Sampah diterima di TPS |
-| `inspecting` | `SORTED` | PETUGAS | Sortir & pemilahan jenis sampah di TPS |
-| `shipping` | `IN_TRANSIT` | PETUGAS | Dimuat ke truk, dikirim ke fasilitas akhir |
-| `receiving` (facility) | `AT_FACILITY` | PETUGAS | Diterima di bank sampah / pengepul / TPA |
-| `recycling` | `RECYCLED` | PETUGAS | Proses daur ulang selesai |
-| `disposing` | `DISPOSED` | PETUGAS | Sampah masuk landfill di TPA |
+| `commissioning` | `IN_MARKET` | BRAND | Produk didaftarkan |
+| `discarding` | `DISCARDED` | KONSUMEN | Konsumen scan & konfirmasi buang (opsional) |
+| `collecting` | `PICKED_UP` | PETUGAS | Petugas ambil sampah |
+| `receiving` | `AT_TPS` / `AT_FACILITY` | PETUGAS | Sampah diterima (konteks dari facility_type) |
+| `inspecting` | `SORTED` | PETUGAS | Sortir & pemilahan |
+| `shipping` | `IN_TRANSIT` | PETUGAS | Dikirim ke fasilitas |
+| `recycling` | `RECYCLED` | PETUGAS | Daur ulang selesai |
+| `disposing` | `DISPOSED` | PETUGAS | Masuk landfill |
 
-> **Catatan**: `biz_step` `receiving` dibedakan oleh konteks (lokasi TPS vs fasilitas akhir) yang tersimpan di `location_name` dan `coordinates`.
+> **Validasi Petugas**: Backend HARUS cek bahwa `biz_step` ada di `allowed_actions` TPS petugas sebelum menerima scan. Juga HARUS cek geo-fence.
 
-**Contoh `epcis_body` (EPCIS 2.0 JSON-LD)**:
-```json
-{
-  "@context": ["https://ref.gs1.org/standards/epcis/2.0.0/epcis-context.jsonld"],
-  "type": "EPCISDocument",
-  "schemaVersion": "2.0",
-  "creationDate": "2026-04-29T10:00:00Z",
-  "epcisBody": {
-    "eventList": [{
-      "type": "ObjectEvent",
-      "eventTime": "2026-04-29T10:00:00Z",
-      "eventTimeZoneOffset": "+07:00",
-      "epcList": ["urn:epc:id:sgtin:0614141.107346.2019"],
-      "action": "OBSERVE",
-      "bizStep": "urn:epcglobal:cbv:bizstep:pos",
-      "readPoint": { "id": "urn:epc:id:sgln:0614141.07346.1234" }
-    }]
-  }
-}
-```
+#### Tabel yang DIHAPUS
+- ~~`point_history`~~ — sistem poin dihapus total
+- ~~`user_collections`~~ — redundan, data dari `activities` (biz_step='discarding')
+- ~~`hackathon_test`~~ — tidak digunakan
 
-#### `point_history`
-Riwayat perolehan poin per aktivitas. Mendukung leaderboard & audit.
-```sql
-id            uuid PK
-user_id       uuid FK → profiles.id
-points_earned integer  -- jumlah poin yang diperoleh dari 1 aktivitas
-activity_id   uuid FK → activities.id  -- aktivitas yang memicu poin
-description   text     -- keterangan human-readable
-created_at    timestamptz
-```
-
-**Aturan Poin**:
-
-Skema poin belum final. Prinsip yang harus diikuti saat implementasi:
-- Makin jauh perjalanan sampah (mendekati `RECYCLED`), makin besar poin petugas
-- Konsumen mendapat poin lebih kecil dari petugas (karena usaha lebih kecil)
-- `RECYCLED` harus memberikan poin lebih besar dari `DISPOSED` (insentif daur ulang)
-- Implementasi nilai poin sesuai dengan yang digunakan dalam `backend/src/constants.ts`:
-
-Struktur poin per biz_step:
-| Aksi | Aktor | Poin |
-|---|---|---|
-| Scan produk (`DISCARDED`) | KONSUMEN | 1 |
-| Pickup gerobak (`PICKED_UP`) | PETUGAS | 2 |
-| Terima di TPS (`AT_TPS`) | PETUGAS | 3 |
-| Sortir sampah (`SORTED`) | PETUGAS | 4 |
-| Muat ke truk (`IN_TRANSIT`) | PETUGAS | 2 |
-| Terima di fasilitas (`AT_FACILITY`) | PETUGAS | 5 |
-| Konfirmasi daur ulang (`RECYCLED`) | PETUGAS | 10 (tertinggi) |
-| Konfirmasi landfill (`DISPOSED`) | PETUGAS | 1 (lebih kecil dari RECYCLED) |
-
-#### `user_collections`
-Rekap produk yang pernah dikumpulkan/scan oleh konsumen. **Tabel ini bersifat convenience (bisa berupa View)**.
-```sql
-id           uuid PK
-user_id      uuid FK → profiles.id
-instance_id  uuid FK → product_instances.id
-collected_at timestamptz
-```
-> **Catatan**: Data ini sebenarnya redundan dengan `activities` (di mana `biz_step = 'discarding'`). Backend tidak boleh mengizinkan insert independen ke tabel ini; record di sini **harus selalu** dibuat secara atomik bersamaan dengan insert di tabel `activities`, atau idealnya diubah menjadi Database View.
-
-#### `hackathon_test`
-Tabel sementara untuk testing koneksi Supabase. **Tidak digunakan untuk fitur produksi**.
-```sql
-id         integer PK autoincrement
-nama       text
-created_at timestamptz
-```
 #### Trigger (DIHAPUS)
 ```
--- ⚠️ TRIGGER `on_auth_user_created` SUDAH DIHAPUS dari database.
--- Trigger ini sebelumnya menyebabkan error "Database error saving new user" karena
--- schema mismatch antara trigger INSERT dan kolom aktual tabel profiles.
---
--- Backend sekarang menangani pembuatan profil secara eksplisit:
---   1. auth.service.ts → admin.createUser() + profiles.upsert()
---   2. auth.middleware.ts → fallback: jika profile missing, auto-create dari user_metadata
---
--- JANGAN buat ulang trigger ini.
+-- ⚠️ TRIGGER `on_auth_user_created` SUDAH DIHAPUS. JANGAN buat ulang.
+-- Backend menangani pembuatan profil secara eksplisit via admin.createUser() + profiles.upsert()
 ```
 
 ---
@@ -417,58 +339,45 @@ created_at timestamptz
 7. App tampilkan konfirmasi + poin diperoleh + timeline produk
 ```
 
-### Alur B: Petugas Pickup (Gerobak → TPS)
+### Alur B: Petugas Scan & Update (TPS-Centric)
 ```
-[Titik scan 1: PICKED_UP — Petugas gerobak/RT]
-1. Petugas buka app → Scan QR sampah di titik kumpul
-2. App tampilkan info instance + status saat ini (DISCARDED)
-3. Petugas konfirmasi pickup → otomatis set biz_step: 'collecting'
-4. Backend:
-   a. INSERT activities { biz_step: 'collecting', actor_id: petugas, coordinates }
-   b. UPDATE product_instances SET current_status='PICKED_UP'
-   c. INSERT point_history + UPDATE profiles.points petugas
+** Validasi setiap scan petugas:
+   - Cek role = PETUGAS & tps_id exists
+   - Cek biz_step ∈ tps.allowed_actions
+   - Cek GPS petugas dalam radius tps.coordinates (Haversine)
+   - Jika gagal validasi → scan DITOLAK
 
-[Titik scan 2: AT_TPS — Petugas TPS]
-5. Di TPS, petugas TPS scan QR yang sama
-6. Backend: INSERT activities { biz_step: 'receiving', location_name: 'TPS Kelurahan X' }
-   UPDATE current_status → 'AT_TPS'
+[Titik scan 1: PICKED_UP]
+1. Petugas buka app → Scan QR sampah (status bisa IN_MARKET atau DISCARDED)
+2. App ambil GPS → kirim ke backend
+3. Backend validasi → INSERT activities + UPDATE current_status
 
-[Titik scan 3: SORTED — Petugas TPS setelah sortir]
-7. Setelah disortir: Petugas scan lagi, pilih jenis hasil sortir
-8. Backend: INSERT activities { biz_step: 'inspecting' }
-   UPDATE current_status → 'SORTED'
+[Selanjutnya: AT_TPS → SORTED → IN_TRANSIT → AT_FACILITY → RECYCLED/DISPOSED]
+4. Setiap tahap: scan QR → validasi → update status
+   (biz_step bisa melompat sesuai allowed_actions TPS)
 ```
 
-### Alur C: Petugas Transport & Fasilitas Akhir
-```
-[Titik scan 4: IN_TRANSIT — Petugas DLH/transport]
-1. Petugas truk scan QR saat muat sampah
-2. Backend: INSERT activities { biz_step: 'shipping' }
-   UPDATE current_status → 'IN_TRANSIT'
-
-[Titik scan 5: AT_FACILITY — Petugas bank sampah/pengepul/TPA]
-3. Petugas fasilitas scan QR saat terima
-4. Backend: INSERT activities { biz_step: 'receiving', location_name: 'Bank Sampah X' }
-   UPDATE current_status → 'AT_FACILITY'
-
-[Titik scan 6 (final): RECYCLED atau DISPOSED]
-5. Petugas scan QR, pilih hasil akhir:
-   - Berhasil daur ulang → biz_step: 'recycling' → current_status: 'RECYCLED'
-   - Tidak bisa daur ulang → biz_step: 'disposing' → current_status: 'DISPOSED'
-6. Backend catat + beri poin tertinggi (TBD) jika RECYCLED
-7. [Opsional] Kirim hash ke Hyperledger Fabric → simpan di activities.blockchain_hash
-```
-
-### Alur D: Brand Daftarkan Produk
+### Alur C: Brand Daftarkan Produk
 ```
 1. Brand login → Web dashboard brand
-2. Isi form: product_name, GTIN, category, weight_grams, material_passport (JSON-LD)
+2. Isi form: product_name, GTIN, category, weight_grams, material_passport
 3. Backend INSERT ke products table
-4. Brand generate product_instances:
-   - Pilih BATCH atau UNIQUE
-   - Input batch_number/serial_number
-   - Backend generate QR code → GS1 Digital Link URL
-5. Brand download QR code → cetak di kemasan produk
+4. Brand generate product_instances (BATCH/UNIQUE) + QR code
+5. Brand download QR → cetak di kemasan produk
+```
+
+### Alur D: TPS Registration (BARU)
+```
+1. ADMIN_TPS register via /register (role=ADMIN_TPS)
+2. ADMIN_TPS login → Dashboard Admin TPS
+3. Isi form "Daftarkan TPS":
+   - Nama, tipe, alamat, koordinat (GeoJSON Point), radius geofence
+   - Pilih allowed_actions (biz_step yang boleh dilakukan petugas)
+4. Backend: INSERT tps_facilities
+5. ADMIN_TPS buat akun petugas:
+   - Isi nama, email, password
+   - Backend: admin.createUser(role=PETUGAS) + SET profiles.tps_id
+6. Petugas login → bisa scan sesuai allowed_actions TPS-nya
 ```
 
 ---
@@ -533,10 +442,18 @@ Base URL: `http://localhost:5000` (dev)
 ### Auth ✅ IMPLEMENTED
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| POST | `/auth/register` | Register user baru (via `admin.createUser`) | Public | ✅ |
+| POST | `/auth/register` | Register user baru (KONSUMEN/ADMIN_TPS/BRAND) | Public | ✅ |
 | POST | `/auth/login` | Login & dapat JWT | Public | ✅ |
 | GET | `/auth/me` | Get profil user terautentikasi | All | ✅ |
-| GET | `/auth/google` | Generate URL Supabase OAuth untuk Google Login (Implicit flow) | Public | ✅ |
+| GET | `/auth/google` | Generate URL Supabase OAuth | Public | ✅ |
+
+### TPS Management (BARU)
+| Method | Endpoint | Deskripsi | Role | Status |
+|---|---|---|---|---|
+| POST | `/tps` | Register TPS baru | ADMIN_TPS | ⬜ TODO |
+| GET | `/tps/me` | Get TPS milik admin | ADMIN_TPS | ⬜ TODO |
+| POST | `/tps/:id/petugas` | Buat akun petugas terikat TPS | ADMIN_TPS | ⬜ TODO |
+| GET | `/tps/:id/petugas` | List petugas di TPS | ADMIN_TPS | ⬜ TODO |
 
 ### Products ✅ IMPLEMENTED
 | Method | Endpoint | Deskripsi | Role | Status |
@@ -544,34 +461,31 @@ Base URL: `http://localhost:5000` (dev)
 | GET | `/products` | List produk milik brand + aggregated stats | BRAND | ✅ |
 | GET | `/products/:gtin` | Detail produk + semua instances + stats | BRAND | ✅ |
 | POST | `/products` | Daftarkan produk baru | BRAND | ✅ |
-| POST | `/products/:gtin/instances` | Buat instance + generate QR GS1 Digital Link | BRAND | ✅ |
-| GET | `/products/instances/:instanceId/qr` | Generate QR code untuk instance existing | BRAND | ✅ |
-
-> **Catatan routing**: `/products/instances/*` route HARUS didefinisikan sebelum `/products/:gtin` di Express agar `"instances"` tidak di-match sebagai parameter `:gtin`.
+| POST | `/products/:gtin/instances` | Buat instance + generate QR | BRAND | ✅ |
+| GET | `/products/instances/:instanceId/qr` | Generate QR code | BRAND | ✅ |
 
 ### Instances & Tracking
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/instances/:id` | Detail instance + history | All | ⬜ Planned |
-| GET | `/instances/:id/activities` | Timeline perjalanan instance (join activities + profiles) | All | ✅ |
-| POST | `/instances/:id/scan` | Scan & catat aktivitas baru | KONSUMEN / PETUGAS | ✅ |
+| GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ✅ |
+| POST | `/instances/:id/scan` | Scan & catat aktivitas (+ geo-verification untuk PETUGAS) | KONSUMEN / PETUGAS | ✅ |
 
 ### Uploads
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| POST | `/upload/evidence` | Upload foto bukti pekerjaan (multipart/form-data) | PETUGAS / KONSUMEN | ✅ |
+| POST | `/upload/evidence` | Upload foto bukti | PETUGAS / KONSUMEN | ✅ |
 
 ### User / Circular Wallet
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/users/me/collections` | Daftar sampah yang pernah di-discard konsumen (join activities + instances + products) | KONSUMEN | ✅ |
-| GET | `/users/me/points` | Total poin + riwayat | KONSUMEN / PETUGAS | ⬜ Planned |
-| GET | `/dashboard/stats` | Statistik agregat (publik) | Public | ⬜ Planned |
+| GET | `/users/me/collections` | Daftar sampah yang pernah di-discard konsumen | KONSUMEN | ✅ |
 
-### QR Resolver
+### Public
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/products/resolve` | Resolve GS1 Digital Link → instance data | Public | ✅ |
+| GET | `/dashboard/stats` | Statistik agregat publik | Public | ✅ |
+| GET | `/public/tps` | Daftar TPS publik + stats (sortable) | Public | ⬜ TODO |
+| GET | `/products/resolve` | Resolve GS1 Digital Link → instance | Public | ✅ |
 
 ---
 

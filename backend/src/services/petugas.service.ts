@@ -11,45 +11,37 @@ const BIZ_STEP_LABELS: Record<string, string> = {
   commissioning: 'Terkumpul',
 };
 
-const BIZ_STEP_POINTS: Record<string, number> = {
-  collecting: 50,
-  receiving: 50,
-  inspecting: 50,
-  shipping: 50,
-  recycling: 100,
-  disposing: 25,
-  discarding: 25,
-  commissioning: 50,
-};
-
 export type PetugasDashboardData = {
   profile: {
     id: string;
     name: string;
     email: string;
     role: string;
-    points: number;
   };
+  tps: {
+    id: string;
+    name: string;
+    type: string;
+    address: string;
+    allowed_actions: string[];
+  } | null;
   summary: {
-    totalPoints: number;
     totalUpdates: number;
-    progressReward: number;
-    remainingPoints: number;
   };
   activities: Array<{
     id: string;
     title: string;
     date: string;
     location: string;
-    points: string;
   }>;
 };
 
 export class PetugasService {
   static async getDashboard(userId: string): Promise<PetugasDashboardData> {
+    // Fetch profile (no points column anymore)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, email, name, role, points')
+      .select('id, email, name, role, tps_id')
       .eq('id', userId)
       .single();
 
@@ -57,6 +49,21 @@ export class PetugasService {
       throw profileError || new Error('Profile not found');
     }
 
+    // Fetch TPS info if petugas is linked to one
+    let tps = null;
+    if (profile.tps_id) {
+      const { data: tpsData } = await supabase
+        .from('tps_facilities')
+        .select('id, name, type, address, allowed_actions')
+        .eq('id', profile.tps_id)
+        .single();
+
+      if (tpsData) {
+        tps = tpsData;
+      }
+    }
+
+    // Fetch recent activities (no points query)
     const { data: activities, error: activitiesError, count } = await supabase
       .from('activities')
       .select('id, biz_step, location_name, timestamp', { count: 'exact' })
@@ -68,54 +75,23 @@ export class PetugasService {
       throw activitiesError;
     }
 
-    const activityIds = (activities || []).map((item) => item.id);
-    let pointMap = new Map<string, number>();
-
-    if (activityIds.length > 0) {
-      const { data: pointHistory } = await supabase
-        .from('point_history')
-        .select('activity_id, points_earned')
-        .eq('user_id', userId)
-        .in('activity_id', activityIds);
-
-      pointMap = new Map(
-        (pointHistory || [])
-          .filter((item) => item.activity_id)
-          .map((item) => [item.activity_id as string, Number(item.points_earned || 0)])
-      );
-    }
-
-    const totalPoints = Number((profile as any).points || 0);
-    const rewardLevel = Math.floor(totalPoints / 1000);
-    const rewardTarget = (rewardLevel + 1) * 1000;
-    const remainingPoints = rewardTarget - totalPoints;
-    const currentLevelPoints = totalPoints % 1000;
-    const progressReward = (currentLevelPoints / 1000) * 100;
-
     return {
       profile: {
         id: profile.id,
         name: profile.name,
         email: profile.email,
         role: profile.role,
-        points: totalPoints,
       },
+      tps,
       summary: {
-        totalPoints,
         totalUpdates: count || activities?.length || 0,
-        progressReward,
-        remainingPoints,
       },
-      activities: (activities || []).map((activity) => {
-        const points = pointMap.get(activity.id) ?? BIZ_STEP_POINTS[activity.biz_step] ?? 0;
-        return {
-          id: activity.id,
-          title: `Memperbarui status: ${BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}`,
-          date: new Date(activity.timestamp).toISOString().slice(0, 10),
-          location: activity.location_name || '-',
-          points: `+${points}`,
-        };
-      }),
+      activities: (activities || []).map((activity) => ({
+        id: activity.id,
+        title: `Memperbarui status: ${BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}`,
+        date: new Date(activity.timestamp).toISOString().slice(0, 10),
+        location: activity.location_name || '-',
+      })),
     };
   }
 }

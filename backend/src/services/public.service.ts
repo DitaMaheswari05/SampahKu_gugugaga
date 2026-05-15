@@ -2,11 +2,11 @@ import { supabase } from '../config/supabase';
 
 export class PublicService {
   static async getDashboardStats() {
-    // Pengguna Aktif: Count of profiles with role KONSUMEN or PETUGAS
+    // Pengguna Aktif: Count of profiles with role KONSUMEN, PETUGAS, or ADMIN_TPS
     const { count: usersCount, error: err1 } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
-      .in('role', ['KONSUMEN', 'PETUGAS']);
+      .in('role', ['KONSUMEN', 'PETUGAS', 'ADMIN_TPS']);
       
     if (err1) throw err1;
 
@@ -25,6 +25,13 @@ export class PublicService {
 
     if (err3) throw err3;
 
+    // Total TPS terdaftar
+    const { count: tpsCount, error: err4 } = await supabase
+      .from('tps_facilities')
+      .select('*', { count: 'exact', head: true });
+
+    if (err4) throw err4;
+
     const recoveryRate = instancesCount && instancesCount > 0 
       ? Math.round(((recycledCount || 0) / instancesCount) * 100) 
       : 0;
@@ -32,7 +39,8 @@ export class PublicService {
     return {
       recovery_rate: recoveryRate,
       tracked_products: instancesCount || 0,
-      active_users: usersCount || 0
+      active_users: usersCount || 0,
+      total_tps: tpsCount || 0,
     };
   }
 }
