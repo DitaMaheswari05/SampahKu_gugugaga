@@ -1,11 +1,13 @@
 import { supabase } from '../config/supabase';
 import QRCode from 'qrcode';
+import { OpenFoodFactsService } from './openfoodfacts.service';
 
 const GS1_BASE_URL = 'https://sampahku.id';
 
 export class ProductService {
   /**
    * Create a new product in the catalogue.
+   * Validates that GTIN prefix is owned by the brand via brand_gtin_prefixes table.
    */
   static async createProduct(brandId: string, payload: {
     sku: string;
@@ -16,18 +18,31 @@ export class ProductService {
   }) {
     const { sku, product_name, material_passport, category, weight_grams } = payload;
 
-    // Get brand's gtin_prefix
+    // Verify brand exists
     const { data: profile, error: profErr } = await supabase
       .from('profiles')
-      .select('gtin_prefix')
+      .select('id')
       .eq('id', brandId)
       .single();
 
     if (profErr || !profile) throw new Error('Brand profile not found');
-    if (!profile.gtin_prefix) throw new Error('Profil Brand ini belum dikonfigurasi dengan gtin_prefix.');
 
+    // Get active GTIN prefixes for this brand
+    const { data: prefixes, error: prefErr } = await supabase
+      .from('brand_gtin_prefixes')
+      .select('prefix')
+      .eq('brand_id', brandId)
+      .eq('is_active', true);
+
+    if (prefErr) throw prefErr;
+    if (!prefixes || prefixes.length === 0) {
+      throw new Error('Brand ini belum memiliki prefix GTIN aktif. Hubungi admin untuk registrasi prefix.');
+    }
+
+    // Pick random prefix and generate GTIN
+    const selectedPrefix = prefixes[Math.floor(Math.random() * prefixes.length)].prefix;
     const itemRef = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digit
-    const gtin = `${profile.gtin_prefix}${itemRef}`;
+    const gtin = `${selectedPrefix}${itemRef}`;
 
     const { data, error } = await supabase
       .from('products')
@@ -39,6 +54,7 @@ export class ProductService {
         material_passport: material_passport || {},
         category: category || null,
         weight_grams: weight_grams || null,
+        source: 'BRAND_MANUAL',
       }])
       .select()
       .single();
@@ -323,5 +339,80 @@ export class ProductService {
         profiles: brandProfile,
       },
     };
+  }
+
+  /**
+   * Resolve or create a product from a barcode GTIN.
+   * - If product already exists in DB, return it
+   * - If not, try to fetch from Open Food Facts
+   * - If OFF unavailable, create a placeholder product (source='OFF_AUTO')
+   * Returns the resolved/created product
+   */
+  static async resolveOrCreateFromBarcode(gtin: string) {
+    const cleanGtin = (gtin || '').replace(/[^0-9]/g, '');
+    if (!cleanGtin || ![8, 12, 13, 14].includes(cleanGtin.length)) {
+      throw new Error('GTIN format invalid');
+    }
+
+    // Step 1: Check if product already exists
+    const { data: existingProduct } = await supabase
+      .from('products')
+      .select('*')
+      .eq('gtin', cleanGtin)
+      .single();
+
+    if (existingProduct) {
+      return existingProduct;
+    }
+
+    // Step 2: Try to fetch from Open Food Facts
+    const offData = await OpenFoodFactsService.fetchProductByGtin(cleanGtin);
+
+    if (offData) {
+      // Create product from OFF data
+      const materialPassport = OpenFoodFactsService.mapToMaterialPassport(offData);
+      const categoryName = (offData.categories_tags && offData.categories_tags[0]) || 'Unknown';
+
+      const { data: newProduct, error: insertErr } = await supabase
+        .from('products')
+        .insert([{
+          gtin: cleanGtin,
+          sku: null,
+          brand_id: null, // OFF products have no brand ownership
+          product_name: offData.product_name || 'Unknown Product',
+          material_passport: materialPassport,
+          category: categoryName,
+          weight_grams: null,
+          source: 'OFF_AUTO',
+          off_last_synced_at: new Date().toISOString(),
+        }])
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+      return newProduct;
+    }
+
+    // Step 3: Fallback - create placeholder product
+    const materialPassport = OpenFoodFactsService.getDefaultMaterialPassport(cleanGtin);
+
+    const { data: fallbackProduct, error: fallbackErr } = await supabase
+      .from('products')
+      .insert([{
+        gtin: cleanGtin,
+        sku: null,
+        brand_id: null,
+        product_name: 'Unknown Product',
+        material_passport: materialPassport,
+        category: 'Unknown',
+        weight_grams: null,
+        source: 'OFF_AUTO',
+        off_last_synced_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (fallbackErr) throw fallbackErr;
+    return fallbackProduct;
   }
 }

@@ -85,7 +85,7 @@ const Home: React.FC = () => {
         
         <p className={styles.subtitle}>
           Lacak perjalanan sampah dari sumber hingga daur ulang dengan teknologi QR code dan
-          blockchain. Bangun ekonomi sirkular yang berkelanjutan.
+          hash-chain SHA-256 untuk integritas data. Bangun ekonomi sirkular yang berkelanjutan.
         </p>
         
         <button 
@@ -146,8 +146,8 @@ const Home: React.FC = () => {
             <div className={styles.cardIcon}>
               <img src="/assets/logo_blockchain.png" alt="Blockchain" />
             </div>
-            <h3>Blockchain Verified</h3>
-            <p>Data tercatat di blockchain Hyperledger Fabric untuk memastikan integritas dan transparansi setiap transaksi</p>
+            <h3>Hash-Chain Verified</h3>
+            <p>Data diverifikasi dengan hash-chain SHA-256 untuk memastikan integritas dan transparansi setiap event</p>
           </div>
 
           <div className={`${styles.card} ${styles.cardPurple}`}>
@@ -179,8 +179,8 @@ const Home: React.FC = () => {
             </div>
           <div className={styles.step}>
             <div className={styles.stepNumber}>3</div>
-            <h3>Dapatkan Reward</h3>
-            <p>Kontribusi Anda dalam ekonomi sirkular akan mendapat apresiasi melalui sistem reward</p>
+            <h3>Lihat Transparansi</h3>
+            <p>Pantau perjalanan sampah Anda secara real-time dan lihat kontribusi nyata terhadap lingkungan</p>
           </div>
         </div>
       </section>

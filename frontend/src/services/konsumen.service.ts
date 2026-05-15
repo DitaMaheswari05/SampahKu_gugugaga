@@ -13,16 +13,17 @@ function getAuthHeaders(): Record<string, string> {
 export interface CollectionItem {
   activity_id: string;
   collected_at: string;
-  instance_id: string;
+  instance_id?: string;
   gtin: string;
-  current_status: string;
-  identification_type: 'BATCH' | 'UNIQUE';
-  batch_number: string | null;
-  serial_number: string | null;
-  last_updated: string;
+  current_status?: string;
+  identification_type?: 'BATCH' | 'UNIQUE';
+  batch_number?: string | null;
+  serial_number?: string | null;
+  last_updated?: string;
   product_name: string;
   category: string | null;
-  weight_grams: number | null;
+  weight_grams?: number | null;
+  type: 'TIER_1' | 'TIER_2';
 }
 
 export interface ActivityEvent {
@@ -65,6 +66,13 @@ export interface InstanceActivitiesResponse {
   status_counts: Record<string, number> | null;
   /** Total number of physical items in this batch (= sibling instances). 1 for UNIQUE. */
   sibling_count: number;
+}
+
+export interface GtinAggregateStats {
+  [biz_step: string]: {
+    count: number;
+    last_scanned_at: string;
+  };
 }
 
 // --- Functions ---
@@ -139,4 +147,28 @@ export const resolveGS1Link = async (url: string) => {
     throw new Error(data.message || 'Gagal memuat data produk');
   }
   return data.data;
+};
+
+/** GET /instances/:gtin/aggregate-stats — Statistik agregat Tier 2 (barcode scan) */
+export const getGtinAggregateStats = async (gtin: string): Promise<GtinAggregateStats> => {
+  const response = await fetch(`${API_URL}/instances/${gtin}/aggregate-stats`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal memuat statistik barcode');
+  }
+  return data.data || {};
+};
+
+/** GET /instances/:gtin/aggregate-stats?limit=5 — Aktivitas terbaru untuk Tier 2 GTIN */
+export const getGtinRecentActivities = async (gtin: string, limit: number = 5) => {
+  const response = await fetch(`${API_URL}/instances/${gtin}/aggregate-activities?limit=${limit}`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal memuat aktivitas barcode');
+  }
+  return data.data || [];
 };

@@ -232,17 +232,34 @@ created_at            timestamptz
 | Recycler | `['receiving', 'inspecting', 'recycling']` |
 
 #### `products`
-Katalog produk yang didaftarkan oleh BRAND.
+Katalog produk dari dua sumber: didaftarkan BRAND atau auto-resolve Open Food Facts (OFF).
 ```sql
 id               uuid PK
 gtin             varchar UNIQUE
 sku              varchar
 brand_id         uuid FK → profiles.id
+source           text CHECK (source IN ('BRAND_MANUAL', 'OFF_AUTO'))
 product_name     text NOT NULL
 material_passport jsonb NOT NULL
 category         text
 weight_grams     integer
+off_last_synced_at timestamptz
 created_at       timestamptz
+```
+
+**Aturan penting `products`:**
+- `source='BRAND_MANUAL'`: produk manual brand, wajib valid prefix GTIN.
+- `source='OFF_AUTO'`: hasil resolve Open Food Facts, `brand_id` harus `NULL`.
+
+#### `brand_gtin_prefixes` (BARU)
+Registrasi kepemilikan prefix GTIN per produsen.
+```sql
+id           uuid PK
+brand_id     uuid FK → profiles.id
+prefix       varchar NOT NULL   -- contoh: 8992753
+is_active    boolean DEFAULT true
+verified_at  timestamptz
+created_at   timestamptz
 ```
 
 #### `product_instances`
@@ -251,11 +268,17 @@ Representasi fisik dari sebuah produk (satu unit atau satu batch).
 id                  uuid PK
 product_id          uuid FK → products.id
 identification_type text CHECK IN ('BATCH', 'UNIQUE')
+identity_number     bigint
 batch_number        text
 serial_number       text
 current_status      text DEFAULT 'IN_MARKET'
 last_updated        timestamptz
 ```
+
+**Normalisasi identitas instance:**
+- Input dari UI cukup angka pada `identity_number`.
+- Trigger DB auto-generate `BATCH-{identity_number}` atau `SERIAL-{identity_number}`.
+- User tidak perlu mengetik prefix `BATCH-`/`SERIAL-` manual.
 
 **Status lifecycle `current_status`** — biz_step bisa melompat (tidak harus linear):
 
@@ -285,7 +308,9 @@ IN_MARKET
 Inti sistem: setiap event dalam perjalanan sampah. Mengikuti standar **EPCIS 2.0**.
 ```sql
 id              uuid PK
-instance_id     uuid FK → product_instances.id
+instance_id     uuid FK → product_instances.id  -- nullable untuk Tier 2
+aggregate_id    uuid FK → sku_aggregates.id
+gtin            varchar FK → products.gtin
 actor_id        uuid FK → profiles.id
 tps_id          uuid FK → tps_facilities.id  -- TPS tempat aktivitas terjadi (NULL untuk konsumen/brand)
 event_type      text DEFAULT 'ObjectEvent'
@@ -298,6 +323,26 @@ timestamp       timestamptz DEFAULT now()
 blockchain_hash text   -- SHA-256 integrity hash (bukan blockchain per-transaksi)
 evidence_url    text
 ```
+
+**Tier constraint `activities`:**
+- Tier 1: `instance_id` terisi, `aggregate_id` dan `gtin` harus `NULL`.
+- Tier 2: `instance_id` harus `NULL`, `aggregate_id` dan `gtin` wajib terisi.
+
+#### `sku_aggregates` (BARU)
+Counter scan event untuk produk unregistered/Tier 2.
+```sql
+id              uuid PK
+gtin            varchar NOT NULL
+product_id      uuid FK → products.id
+tps_id          uuid FK → tps_facilities.id
+biz_step        text NOT NULL
+count           integer NOT NULL DEFAULT 1
+last_scanned_at timestamptz
+created_at      timestamptz
+UNIQUE (gtin, tps_id, biz_step)
+```
+
+> **Catatan**: `count` adalah jumlah scan event, bukan jumlah unit unik. Tidak bisa dipakai untuk recovery rate.
 
 > **Catatan `tps_id`**: Kolom ini diisi otomatis oleh backend saat PETUGAS scan (dari `profiles.tps_id`). Memungkinkan query agregasi TPS stats secara langsung tanpa join 3 tabel.
 
@@ -332,18 +377,17 @@ evidence_url    text
 
 ### Alur A: Konsumen Scan & Buang Sampah
 ```
-1. Konsumen buka app → Scan QR code pada kemasan produk
-2. App decode QR → ekstrak GTIN + serial/batch number (GS1 Digital Link)
-3. Backend GET /resolve?gtin=...&serial=... → cari product_instance
-4. App tampilkan info produk: nama, brand, material_passport, cara daur ulang
-5. Konsumen tap "Buang Sampah" → konfirmasi
-6. Backend atomik buat:
-   a. INSERT activities { biz_step: 'discarding', actor_id: konsumen, instance_id }
-   b. INSERT user_collections { user_id: konsumen, instance_id } (atau abaikan jika pakai View)
-   c. UPDATE product_instances SET current_status='DISCARDED'
-   d. INSERT point_history { user_id: konsumen, points_earned: TBD }
-   e. UPDATE profiles SET points = points + TBD WHERE id = konsumen
-7. App tampilkan konfirmasi + poin diperoleh + timeline produk
+1. Konsumen scan QR (Tier 1) ATAU barcode GTIN biasa (Tier 2)
+2. Tier 1: resolve instance dari GS1 Digital Link
+3. Tier 2: resolve product dari tabel products; jika belum ada, fetch Open Food Facts lalu auto-create product (`source='OFF_AUTO'`)
+4. Konsumen konfirmasi buang sampah
+5. Backend simpan activity:
+   a. Tier 1: INSERT activities { instance_id, biz_step='discarding' }
+   b. Tier 2: INSERT activities { gtin, aggregate_id, biz_step='discarding' }
+6. Tier 1 update `product_instances.current_status='DISCARDED'`
+7. Dashboard wallet menampilkan:
+   - Tier 1: timeline instance personal
+   - Tier 2: statistik agregat produk (collecting/inspecting/recycling/discarding)
 ```
 
 ### Alur B: Petugas Scan & Update (TPS-Centric)
@@ -362,15 +406,23 @@ evidence_url    text
 [Selanjutnya: AT_TPS → SORTED → IN_TRANSIT → AT_FACILITY → RECYCLED/DISPOSED]
 4. Setiap tahap: scan QR → validasi → update status
    (biz_step bisa melompat sesuai allowed_actions TPS)
+
+[Untuk barcode GTIN unregistered/Tier 2]
+5. Petugas scan barcode biasa
+6. Backend resolve product by GTIN; jika belum ada, fetch Open Food Facts lalu simpan sebagai `source='OFF_AUTO'`
+7. Backend UPSERT ke `sku_aggregates` pada kombinasi (gtin, tps_id, biz_step) dengan `count + 1`
+8. Backend INSERT `activities` Tier 2 (`instance_id=NULL`, `aggregate_id`, `gtin`)
 ```
 
 ### Alur C: Brand Daftarkan Produk
 ```
 1. Brand login → Web dashboard brand
 2. Isi form: product_name, GTIN, category, weight_grams, material_passport
-3. Backend INSERT ke products table
-4. Brand generate product_instances (BATCH/UNIQUE) + QR code
-5. Brand download QR → cetak di kemasan produk
+3. Backend validasi GTIN harus match prefix aktif milik brand di `brand_gtin_prefixes`
+4. Backend INSERT ke products table dengan `source='BRAND_MANUAL'`
+5. Brand generate product_instances (BATCH/UNIQUE) dengan input angka `identity_number`
+6. Trigger DB membentuk label final: `BATCH-{identity_number}` atau `SERIAL-{identity_number}`
+7. Brand download QR → cetak di kemasan produk
 ```
 
 ### Alur D: TPS Registration (BARU)
@@ -476,6 +528,9 @@ Base URL: `http://localhost:5000` (dev)
 |---|---|---|---|---|
 | GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ✅ |
 | POST | `/instances/:id/scan` | Scan & catat aktivitas (+ geo-verification untuk PETUGAS) | KONSUMEN / PETUGAS | ✅ |
+| POST | `/instances/scan-barcode` | Scan/update untuk GTIN biasa (Tier 2, petugas) | PETUGAS | ⬜ TODO |
+| POST | `/instances/discard-barcode` | Simpan discard GTIN ke wallet konsumen (Tier 2) | KONSUMEN | ⬜ TODO |
+| GET | `/instances/:gtin/aggregate-stats` | Ambil statistik agregat per biz_step untuk GTIN | All | ⬜ TODO |
 
 ### Uploads
 | Method | Endpoint | Deskripsi | Role | Status |
@@ -485,7 +540,7 @@ Base URL: `http://localhost:5000` (dev)
 ### User / Circular Wallet
 | Method | Endpoint | Deskripsi | Role | Status |
 |---|---|---|---|---|
-| GET | `/users/me/collections` | Daftar sampah yang pernah di-discard konsumen | KONSUMEN | ✅ |
+| GET | `/users/me/collections` | Daftar sampah wallet konsumen (Tier 1 + Tier 2) | KONSUMEN | ✅ |
 
 ### Public
 | Method | Endpoint | Deskripsi | Role | Status |
@@ -493,6 +548,7 @@ Base URL: `http://localhost:5000` (dev)
 | GET | `/dashboard/stats` | Statistik agregat publik | Public | ✅ |
 | GET | `/public/tps` | Daftar TPS publik + stats (sortable) | Public | ⬜ TODO |
 | GET | `/products/resolve` | Resolve GS1 Digital Link → instance | Public | ✅ |
+| GET | `/products/resolve-barcode` | Resolve GTIN via DB/OFF (tanpa instance) | Public | ⬜ TODO |
 
 ---
 
@@ -515,8 +571,8 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 2. **Login / Register** — Form sederhana, pilih role ✅
 3. **Scan QR** — Kamera scanner + form konfirmasi
 4. **Detail Produk** — Info produk + timeline perjalanan sampah
-5. **Dashboard Konsumen** — Poin, jumlah sampah dikumpulkan, history
-6. **Leaderboard** — Ranking user berdasarkan poin
+5. **Dashboard Konsumen** — Circular Wallet (Tier 1 timeline + Tier 2 aggregate view)
+6. **Detail Barcode** — Persebaran aktivitas produk per tahap (scan events)
 
 **Petugas**:
 1. **Dashboard Petugas** — List sampah yang perlu diproses
@@ -590,12 +646,19 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 24. **Auth Middleware Fallback**: Jika query ke tabel `profiles` gagal, middleware otentikasi akan menggunakan data `user_metadata` dari token JWT sebagai cadangan (fallback), memastikan sistem RBAC (`req.profile.role`) tetap berfungsi bahkan jika ada *delay* sinkronisasi database.
 25. **Frontend Supabase Decoupling**: Frontend tidak memuat SDK Supabase. Autentikasi OAuth (Google) dilakukan dengan cara frontend memanggil `GET /auth/google`, lalu backend me-return URL Supabase OAuth, frontend me-redirect pengguna ke URL tersebut, dan Supabase me-redirect kembali ke frontend dengan `#access_token=...` yang kemudian di-parsing secara lokal di frontend.
 26. **Circular Wallet Flow**: Konsumen scan → `POST /instances/:id/scan` (biz_step `discarding`) → data tersimpan di `activities`. Dashboard konsumen membaca `GET /users/me/collections` yang melakukan join: `activities` (filter `biz_step='discarding'` & `actor_id=user`) → `product_instances` → `products`. Detail timeline dibaca via `GET /instances/:id/activities`.
-27. **`/users/me/collections` Logic**: Query join `activities` → `product_instances` → `products`. Filter `biz_step = 'discarding'` dan `actor_id = konsumen.id`. Hasilnya di-flatten ke struktur flat untuk kemudahan konsumsi frontend. Sorted by `timestamp DESC`.
+27. **`/users/me/collections` Logic**: Harus support dual source:
+   - Tier 1: join `activities` → `product_instances` → `products`
+   - Tier 2: join `activities` (by `gtin`, `instance_id IS NULL`) → `products`
+   Filter tetap `biz_step = 'discarding'` dan `actor_id = konsumen.id`, lalu merge + sort `timestamp DESC`.
 28. **`/instances/:id/activities` Logic**: Return dua objek: `instance` (data product_instances + join products + join profiles brand) dan `activities` (semua rows activities untuk instance tersebut, join profiles actor, sorted ASC untuk tampil kronologis).
 29. **Frontend Constants Pattern**: Saat membuat fitur baru yang menggunakan nilai role, SELALU import dari `constants/roles.ts`. Saat membutuhkan navigasi berdasarkan role, SELALU gunakan `getHomeRouteByRole()` dari `constants/routes.ts`. Jangan pernah hardcode string role atau path redirect di komponen.
 30. **Auth Seeding**: **JANGAN** seed user via raw SQL `INSERT INTO auth.users` — ini menghasilkan record dengan `instance_id = NULL` yang tidak terlihat oleh GoTrue dan menyebabkan error `Database error checking email`. SELALU gunakan `supabase.auth.admin.createUser()` dari script TypeScript (lihat `backend/fix_users.ts`). Untuk cleanup data seeder, hapus dalam urutan FK yang benar: `point_history` → `user_collections` → `activities` → `product_instances` → `products` → `auth.identities` → `profiles` → `auth.users`.
-31. **Product Instances Relation**: `product_instances` menggunakan `product_id` sebagai *foreign key* ke `products`. Karena frontend banyak membutuhkan nilai `gtin`, backend (services) HARUS selalu men-*join* tabel `products` (contoh: `.select('*, products!inner(gtin)')`) dan memetakan nilai `gtin` tersebut kembali ke level *root* object (misal: `gtin: row.products.gtin`) sebelum dikirim ke frontend.
+31. **Product Instances Relation**: `product_instances` menggunakan `product_id` sebagai *foreign key* ke `products`. Karena frontend banyak membutuhkan nilai `gtin`, backend (services) HARUS selalu men-*join* tabel `products` dan memetakan `gtin` ke level root object.
+32. **GTIN Prefix Enforcement**: Insert/update `products` untuk `source='BRAND_MANUAL'` wajib lolos trigger validasi prefix terhadap `brand_gtin_prefixes`.
+33. **OFF Auto Product**: Produk hasil Open Food Facts wajib disimpan `source='OFF_AUTO'`, `brand_id=NULL`, dan timestamp sinkronisasi di `off_last_synced_at`.
+34. **Identity Number First**: Endpoint create instance harus menerima `identity_number` numerik sebagai input utama; format `BATCH-`/`SERIAL-` dibentuk di database trigger.
+35. **Tier-2 Stats Semantics**: Data `sku_aggregates.count` adalah scan events, bukan unique units; jangan dipakai menghitung recovery rate persentase.
 
 ---
 
-*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Normalisasi DB: split address → city+province, tambah capacity di tps_facilities, tambah tps_id FK di activities, restore gtin_prefix di profiles, hapus points).*
+*Dokumen ini dibuat pada 2026-04-29. Terakhir diperbarui: 2026-05-15 (Two-tier GTIN/OFF: tambah sku_aggregates, brand_gtin_prefixes, source metadata di products, normalisasi identity_number di product_instances, activities dual-tier identifier).* 

@@ -11,6 +11,7 @@ import DashboardCompany from './pages/Dashboard_Company';
 import Logout from './pages/Logout';
 import KonsumenScan from './pages/KonsumenScan';
 import DetailSampah from './pages/DetailSampah';
+import DetailBarcode from './pages/DetailBarcode';
 import AdminTpsDashboard from './pages/AdminTpsDashboard';
 import { ROLES } from './constants/roles';
 import { getHomeRouteByRole } from './constants/routes';
@@ -128,6 +129,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[ROLES.KONSUMEN]}>
               <DetailSampah />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/detail-barcode/:gtin"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.KONSUMEN]}>
+              <DetailBarcode />
             </ProtectedRoute>
           }
         />

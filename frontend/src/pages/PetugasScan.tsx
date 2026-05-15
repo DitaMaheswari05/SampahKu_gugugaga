@@ -6,6 +6,7 @@ import {
   resolveGS1Link,
   uploadEvidence,
   scanInstance,
+  scanBarcode,
   getPetugasDashboard,
   ProductInstanceResolved,
   ScanPayload,
@@ -47,6 +48,8 @@ export default function PetugasScan() {
   // UI & Scan States
   const [step, setStep] = useState<ScanStep>('scan');
   const [instance, setInstance] = useState<ProductInstanceResolved | null>(null);
+  const [scannedGtin, setScannedGtin] = useState<string | null>(null);
+  const [scanType, setScanType] = useState<'TIER_1' | 'TIER_2' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -136,9 +139,26 @@ export default function PetugasScan() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const data = await resolveGS1Link(decodedText);
-      setInstance(data);
-      setStep('preview');
+      // Detect: GS1 Digital Link (contains /01/) vs standard barcode (digits only, 12-14 chars)
+      const isGS1DigitalLink = decodedText.includes('/01/');
+      const isStandardBarcode = /^\d{12,14}$/.test(decodedText);
+
+      if (isGS1DigitalLink) {
+        // Tier 1: GS1 Digital Link
+        const data = await resolveGS1Link(decodedText);
+        setInstance(data);
+        setScanType('TIER_1');
+        setScannedGtin(null);
+        setStep('preview');
+      } else if (isStandardBarcode) {
+        // Tier 2: Standard barcode (EAN/UPC)
+        setScannedGtin(decodedText);
+        setScanType('TIER_2');
+        setInstance(null);
+        setStep('preview');
+      } else {
+        throw new Error('Format QR/barcode tidak dikenali. Silakan gunakan GS1 Digital Link atau barcode standar (12-14 digit).');
+      }
     } catch (err: any) {
       setErrorMsg(err.message);
       setStep('scan');
@@ -181,11 +201,26 @@ export default function PetugasScan() {
       const decodedText = await html5QrCodeRef.current.scanFile(file, true);
       html5QrCodeRef.current.clear();
 
-      const data = await resolveGS1Link(decodedText);
-      setInstance(data);
-      setStep('preview');
+      // Detect: GS1 Digital Link vs standard barcode
+      const isGS1DigitalLink = decodedText.includes('/01/');
+      const isStandardBarcode = /^\d{12,14}$/.test(decodedText);
+
+      if (isGS1DigitalLink) {
+        const data = await resolveGS1Link(decodedText);
+        setInstance(data);
+        setScanType('TIER_1');
+        setScannedGtin(null);
+        setStep('preview');
+      } else if (isStandardBarcode) {
+        setScannedGtin(decodedText);
+        setScanType('TIER_2');
+        setInstance(null);
+        setStep('preview');
+      } else {
+        throw new Error('Format QR/barcode di gambar tidak dikenali.');
+      }
     } catch (err: any) {
-      setErrorMsg('Gagal membaca QR code dari gambar. Pastikan gambar jelas.');
+      setErrorMsg('Gagal membaca QR/barcode dari gambar. Pastikan gambar jelas.');
       setStep('scan');
     } finally {
       setLoading(false);
@@ -195,7 +230,7 @@ export default function PetugasScan() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!instance) return;
+    if (!instance && !scannedGtin) return;
 
     if (geoStatus !== 'ok') {
       setErrorMsg('GPS belum aktif. Pastikan izin lokasi diberikan sebelum submit.');
@@ -221,7 +256,15 @@ export default function PetugasScan() {
         coordinates: geoCoords || undefined,
       };
 
-      await scanInstance(instance.id, payload);
+      // Tier 1: instance scan
+      if (scanType === 'TIER_1' && instance) {
+        await scanInstance(instance.id, payload);
+      }
+      // Tier 2: barcode scan
+      else if (scanType === 'TIER_2' && scannedGtin) {
+        await scanBarcode(scannedGtin, payload);
+      }
+
       setStep('success');
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -233,6 +276,8 @@ export default function PetugasScan() {
 
   const handleRetake = () => {
     setInstance(null);
+    setScannedGtin(null);
+    setScanType(null);
     setErrorMsg('');
     setEvidenceFile(null);
     setStep('scan');
@@ -363,10 +408,13 @@ export default function PetugasScan() {
             </>
           )}
 
-          {/* STATE 2: PREVIEW & FORM PETUGAS */}
-          {step === 'preview' && instance && (
+          {/* STATE 2: PREVIEW & FORM PETUGAS (TIER 1: Instance/Unique) */}
+          {step === 'preview' && scanType === 'TIER_1' && instance && (
             <>
               <div className={styles.infoContainer} style={{ marginBottom: '10px' }}>
+                <div style={{ background: '#e3f2fd', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '12px', color: '#1565c0', fontWeight: 600, fontFamily: "'Poppins', sans-serif" }}>
+                  📦 Tier 1 - Instance Unik
+                </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Nama Produk</span>
                   <span className={styles.infoValue}>{instance.products?.product_name || 'Tidak diketahui'}</span>
@@ -383,7 +431,7 @@ export default function PetugasScan() {
                 </div>
               </div>
 
-              {/* FORM UPDATE PETUGAS */}
+              {/* FORM UPDATE PETUGAS - TIER 1 */}
               <form onSubmit={handleSubmit} className={styles.formGroup}>
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Aksi / Biz Step</label>
@@ -402,7 +450,7 @@ export default function PetugasScan() {
                   )}
                 </div>
 
-                {/* Lokasi otomatis dari TPS — ditampilkan sebagai info, tidak bisa diedit */}
+                {/* Lokasi otomatis dari TPS */}
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Lokasi</label>
                   <div style={{
@@ -492,6 +540,126 @@ export default function PetugasScan() {
                     disabled={loading || geoStatus !== 'ok' || allowedActions.length === 0}
                   >
                     {loading ? 'Menyimpan...' : geoStatus !== 'ok' ? 'Menunggu GPS...' : 'Simpan Pembaruan'}
+                  </button>
+                  <button type="button" className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
+                    Batal / Pindai Ulang
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {/* STATE 2B: PREVIEW & FORM PETUGAS (TIER 2: Barcode/Aggregate) */}
+          {step === 'preview' && scanType === 'TIER_2' && scannedGtin && (
+            <>
+              <div className={styles.infoContainer} style={{ marginBottom: '10px' }}>
+                <div style={{ background: '#f3e5f5', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '12px', color: '#6a1b9a', fontWeight: 600, fontFamily: "'Poppins', sans-serif" }}>
+                  📊 Tier 2 - Barcode Agregat
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>GTIN / Barcode</span>
+                  <span className={`${styles.infoValue} ${styles.infoValueMono}`}>{scannedGtin}</span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', fontStyle: 'italic' }}>
+                  📌 Scan agregat untuk semua unit dengan barcode ini
+                </div>
+              </div>
+
+              {/* FORM UPDATE PETUGAS - TIER 2 */}
+              <form onSubmit={handleSubmit} className={styles.formGroup}>
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>Aksi / Biz Step</label>
+                  {allowedActions.length > 0 ? (
+                    <select value={bizStep} onChange={e => setBizStep(e.target.value)} required className={styles.inputStyle}>
+                      {allowedActions.map((action) => (
+                        <option key={action} value={action}>
+                          {BIZ_STEP_LABELS[action] || action}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div style={{ padding: '12px', background: '#fef2f2', borderRadius: '12px', fontSize: '13px', color: '#dc2626' }}>
+                      TPS Anda tidak memiliki aksi yang diperbolehkan.
+                    </div>
+                  )}
+                </div>
+
+                {/* Lokasi otomatis */}
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>Lokasi</label>
+                  <div style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    background: '#f3f4f6',
+                    fontSize: '14px',
+                    fontFamily: "'Poppins', sans-serif",
+                    color: '#374151',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4caf50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {tpsName || '-'} ({tpsType || '-'})
+                  </div>
+                </div>
+
+                {/* GPS status */}
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>GPS</label>
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    background: geoStatus === 'ok' ? '#f0fdf4' : geoStatus === 'loading' ? '#fffbeb' : '#fef2f2',
+                    fontSize: '13px',
+                    fontFamily: "'Poppins', sans-serif",
+                    color: geoStatus === 'ok' ? '#166534' : geoStatus === 'loading' ? '#92400e' : '#991b1b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}>
+                    {geoStatus === 'ok' && geoCoords && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>📍</span>
+                        {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                      </>
+                    )}
+                    {geoStatus === 'loading' && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>⏳</span>
+                        Mendapatkan lokasi GPS...
+                      </>
+                    )}
+                    {geoStatus === 'error' && (
+                      <>
+                        <span style={{ fontSize: '16px' }}>❌</span>
+                        GPS tidak tersedia — scan tidak bisa dilakukan
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>Foto Bukti (Opsional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setEvidenceFile(e.target.files?.[0] || null)}
+                    className={styles.fileInput}
+                  />
+                </div>
+
+                <div className={styles.formActions}>
+                  <button
+                    type="submit"
+                    className={styles.btnPrimary}
+                    disabled={loading || geoStatus !== 'ok' || allowedActions.length === 0}
+                  >
+                    {loading ? 'Menyimpan...' : geoStatus !== 'ok' ? 'Menunggu GPS...' : 'Simpan Scan Barcode'}
                   </button>
                   <button type="button" className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
                     Batal / Pindai Ulang

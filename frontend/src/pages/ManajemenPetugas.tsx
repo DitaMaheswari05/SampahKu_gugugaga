@@ -7,7 +7,6 @@ interface PetugasExtended extends PetugasItem {
   phone: string;
   area: string;
   totalUpdates: number;
-  points: number;
   status: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -15,7 +14,7 @@ const ManajemenPetugas: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [petugasList, setPetugasList] = useState<PetugasExtended[]>([]);
-  const [stats, setStats] = useState({ active: 0, inactive: 0, total: 0, points: 0 });
+  const [stats, setStats] = useState({ active: 0, total: 0 });
   const [tpsId, setTpsId] = useState<string | null>(null);
 
   // Modal State
@@ -41,22 +40,17 @@ const ManajemenPetugas: React.FC = () => {
             phone: '-', // Fallback (Bisa diganti jika endpoint sudah menyediakan phone_number)
             area: tpsData.city || 'Tidak diketahui',
             totalUpdates: 0, // Fallback
-            points: 0, // Fallback
             status: 'ACTIVE' // Default ACTIVE
           }));
 
           setPetugasList(mappedPetugas);
 
-          // Kalkulasi Summary
+          // Kalkulasi Summary (Hanya Active + Total)
           const activeCount = mappedPetugas.filter(p => p.status === 'ACTIVE').length;
-          const inactiveCount = mappedPetugas.filter(p => p.status === 'INACTIVE').length;
-          const totalPoints = mappedPetugas.reduce((sum, p) => sum + p.points, 0);
 
           setStats({
             active: activeCount,
-            inactive: inactiveCount,
             total: mappedPetugas.length,
-            points: totalPoints,
           });
         } else {
           setError('Anda belum memiliki TPS yang terdaftar.');
@@ -92,10 +86,10 @@ const ManajemenPetugas: React.FC = () => {
       if (tpsData) {
         const petugasData = await getTpsPetugas(tpsData.id);
         const mappedPetugas: PetugasExtended[] = petugasData.map((p) => ({
-          ...p, phone: '-', area: tpsData.city || 'Tidak diketahui', totalUpdates: 0, points: 0, status: 'ACTIVE'
+          ...p, phone: '-', area: tpsData.city || 'Tidak diketahui', totalUpdates: 0, status: 'ACTIVE'
         }));
         setPetugasList(mappedPetugas);
-        setStats(prev => ({ ...prev, active: mappedPetugas.filter(p => p.status === 'ACTIVE').length, inactive: mappedPetugas.filter(p => p.status === 'INACTIVE').length, total: mappedPetugas.length }));
+        setStats(prev => ({ active: mappedPetugas.filter(p => p.status === 'ACTIVE').length, total: mappedPetugas.length }));
       }
     } catch (e: any) {
       setError(e.message || 'Gagal membuat akun petugas');
@@ -137,7 +131,7 @@ const ManajemenPetugas: React.FC = () => {
 
         {error && <div className={styles.errorBanner}>{error}</div>}
 
-        {/* --- 4 Summary Cards (Grid) --- */}
+        {/* --- 2 Summary Cards (Grid) --- */}
         <div className={styles.summaryGrid}>
           {/* Card 1: Active */}
           <div className={styles.card}>
@@ -153,21 +147,7 @@ const ManajemenPetugas: React.FC = () => {
             <div className={styles.cardLabel}>Petugas Aktif</div>
           </div>
 
-          {/* Card 2: Inactive */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={`${styles.cardTitle} ${styles.textInactive}`}>Inactive</span>
-              <div className={`${styles.iconBox} ${styles.iconInactive}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/>
-                </svg>
-              </div>
-            </div>
-            <div className={styles.cardValue}>{stats.inactive}</div>
-            <div className={styles.cardLabel}>Petugas Nonaktif</div>
-          </div>
-
-          {/* Card 3: Total */}
+          {/* Card 2: Total (renamed from Card 3) */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <span className={`${styles.cardTitle} ${styles.textTotal}`}>Total</span>
@@ -179,20 +159,6 @@ const ManajemenPetugas: React.FC = () => {
             </div>
             <div className={styles.cardValue}>{stats.total}</div>
             <div className={styles.cardLabel}>Total Updates</div>
-          </div>
-
-          {/* Card 4: Points */}
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <span className={`${styles.cardTitle} ${styles.textPoints}`}>Points</span>
-              <div className={`${styles.iconBox} ${styles.iconPoints}`}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
-                </svg>
-              </div>
-            </div>
-            <div className={styles.cardValue}>{stats.points}</div>
-            <div className={styles.cardLabel}>Total Poin</div>
           </div>
         </div>
 
@@ -206,15 +172,13 @@ const ManajemenPetugas: React.FC = () => {
                 <th>No. Telepon</th>
                 <th>Area Tugas</th>
                 <th>Total Update</th>
-                <th>Poin</th>
-                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {petugasList.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>
                     Belum ada petugas terdaftar.
                   </td>
                 </tr>
@@ -235,12 +199,6 @@ const ManajemenPetugas: React.FC = () => {
                       <span className={styles.badgeArea}>{petugas.area}</span>
                     </td>
                     <td className={styles.textBoldData} style={{ textAlign: 'center' }}>{petugas.totalUpdates}</td>
-                    <td className={styles.textPointsData} style={{ textAlign: 'center' }}>{petugas.points}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span className={petugas.status === 'ACTIVE' ? styles.badgeActive : styles.badgeInactive}>
-                        {petugas.status === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                    </td>
                     <td style={{ textAlign: 'center' }}>
                       <button className={styles.btnDelete} onClick={() => handleDelete(petugas.id)} aria-label="Hapus Petugas">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

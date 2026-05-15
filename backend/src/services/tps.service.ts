@@ -161,9 +161,11 @@ export class TpsService {
     }
 
     // Aggregate activities directly via tps_id (1-hop, no longer 3-hop)
+    // Include both Tier 1 (activities) and Tier 2 (sku_aggregates)
     const activitiesByTps = new Map<string, { total: number; by_step: Record<string, number> }>();
 
     if (tpsIds.length > 0) {
+      // Tier 1: activities
       const { data: activities, error: actErr } = await supabase
         .from('activities')
         .select('tps_id, biz_step')
@@ -176,6 +178,22 @@ export class TpsService {
           stats.total++;
           stats.by_step[act.biz_step] = (stats.by_step[act.biz_step] || 0) + 1;
           activitiesByTps.set(act.tps_id, stats);
+        }
+      }
+
+      // Tier 2: sku_aggregates (count scan events, not units)
+      const { data: aggregates, error: aggErr } = await supabase
+        .from('sku_aggregates')
+        .select('tps_id, biz_step, count')
+        .in('tps_id', tpsIds);
+
+      if (!aggErr && aggregates) {
+        for (const agg of aggregates) {
+          if (!agg.tps_id) continue;
+          const stats = activitiesByTps.get(agg.tps_id) || { total: 0, by_step: {} };
+          stats.total += agg.count;
+          stats.by_step[agg.biz_step] = (stats.by_step[agg.biz_step] || 0) + agg.count;
+          activitiesByTps.set(agg.tps_id, stats);
         }
       }
     }

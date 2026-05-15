@@ -57,10 +57,13 @@ const Dashboard: React.FC = () => {
     loadCollections();
   }, [loadCollections]);
 
-  // Hitung stats dari data nyata
+  // Hitung stats dari data nyata (Tier 1 only untuk conversion rate)
+  const tier1Items = collections.filter(c => c.type === 'TIER_1');
+  
   const totalItems = collections.length;
-  const recycledItems = collections.filter(c => c.current_status === 'RECYCLED').length;
-  const conversionRate = totalItems > 0 ? Math.round((recycledItems / totalItems) * 100) : 0;
+  const recycledItems = tier1Items.filter(c => c.current_status === 'RECYCLED').length;
+  // Conversion rate hanya dari Tier 1
+  const conversionRate = tier1Items.length > 0 ? Math.round((recycledItems / tier1Items.length) * 100) : 0;
 
   return (
     <div className={styles.mobileContainer}>
@@ -122,7 +125,7 @@ const Dashboard: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <h3 className={styles.statValue}>{loading ? '...' : `${conversionRate}%`}</h3>
+              <h3 className={styles.statValue}>{loading ? '...' : (tier1Items.length === 0 ? '—' : `${conversionRate}%`)}</h3>
               <p className={styles.statDesc}>Tingkat keberhasilan</p>
             </div>
           </div>
@@ -164,41 +167,93 @@ const Dashboard: React.FC = () => {
                 <p>Scan QR produk untuk mulai melacak!</p>
               </div>
             ) : (
-              collections.map((item) => (
-                <div
-                  key={item.activity_id}
-                  className={styles.listItem}
-                  onClick={() => navigate(`/detail-sampah/${item.instance_id}`)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className={styles.itemIcon}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF5E9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                  </div>
+              collections.map((item) => {
+                // Tier 1: Unique/Batch timeline dengan status individual
+                if (item.type === 'TIER_1') {
+                  return (
+                    <div
+                      key={item.activity_id}
+                      className={styles.listItem}
+                      onClick={() => navigate(`/detail-sampah/${item.instance_id}`)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className={styles.itemIcon}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF5E9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                      </div>
 
-                  <div className={styles.itemDetails}>
-                    <h4 className={styles.itemName}>{item.product_name}</h4>
-                    <div className={styles.itemMeta}>
-                      <span className={styles.gtinText}>GTIN: {item.gtin}</span>
-                      <span className={styles.dot}>•</span>
-                      <span className={styles.dateText}>{formatDate(item.collected_at)}</span>
+                      <div className={styles.itemDetails}>
+                        <h4 className={styles.itemName}>{item.product_name}</h4>
+                        <div className={styles.itemMeta}>
+                          <span className={styles.statusBadge} style={{ background: '#E0F2FE', color: '#0369A1', fontSize: '10px' }}>
+                            Tier 1
+                          </span>
+                          <span className={styles.gtinText}>GTIN: {item.gtin}</span>
+                          <span className={styles.dot}>•</span>
+                          <span className={styles.dateText}>{formatDate(item.collected_at)}</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.itemRight}>
+                        <span className={`${styles.statusBadge} ${getStatusStyle(item.current_status || 'IN_MARKET')}`}>
+                          {STATUS_LABELS[item.current_status || 'IN_MARKET'] || item.current_status}
+                        </span>
+                        <svg className={styles.chevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Tier 2: Barcode scan aggregate view
+                return (
+                  <div
+                    key={item.activity_id}
+                    className={styles.listItem}
+                    onClick={() => navigate(`/detail-barcode/${item.gtin}`)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className={styles.itemIcon} style={{ background: '#E8F5E9' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="5" y1="6" x2="5" y2="18" />
+                        <line x1="9" y1="6" x2="9" y2="18" />
+                        <line x1="13" y1="6" x2="13" y2="18" />
+                        <line x1="17" y1="6" x2="17" y2="18" />
+                        <line x1="19" y1="6" x2="19" y2="18" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                      </svg>
+                    </div>
+
+                    <div className={styles.itemDetails}>
+                      <h4 className={styles.itemName}>{item.product_name}</h4>
+                      <div className={styles.itemMeta}>
+                        <span className={styles.statusBadge} style={{ background: '#E8F5E9', color: '#2E7D32', fontSize: '10px' }}>
+                          Tier 2
+                        </span>
+                        <span className={styles.gtinText}>GTIN: {item.gtin}</span>
+                        <span className={styles.dot}>•</span>
+                        <span className={styles.dateText}>{formatDate(item.collected_at)}</span>
+                      </div>
+                    </div>
+
+                    <div className={styles.itemRight}>
+                      <span className={styles.statusBadge} style={{ background: '#E8F5E9', color: '#2E7D32' }}>
+                        📊 Barcode Scan
+                      </span>
+                      <svg className={styles.chevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
                     </div>
                   </div>
-
-                  <div className={styles.itemRight}>
-                    <span className={`${styles.statusBadge} ${getStatusStyle(item.current_status)}`}>
-                      {STATUS_LABELS[item.current_status] || item.current_status}
-                    </span>
-                    <svg className={styles.chevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

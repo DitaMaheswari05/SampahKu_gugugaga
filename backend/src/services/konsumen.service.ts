@@ -2,11 +2,13 @@ import { supabase } from '../config/supabase';
 
 export class KonsumenService {
   /**
-   * Ambil semua product instances yang pernah di-discard oleh konsumen tertentu.
-   * Data diambil dari tabel activities (biz_step = 'discarding') join ke product_instances dan products.
+   * Ambil semua product items yang pernah di-discard oleh konsumen tertentu (Tier 1 + Tier 2).
+   * - Tier 1: activities dengan instance_id (personal timeline)
+   * - Tier 2: activities dengan gtin (barcode scan)
    */
   static async getMyCollections(userId: string) {
-    const { data, error } = await supabase
+    // Tier 1: product instances (UNIQUE/BATCH)
+    const { data: tier1Data, error: tier1Err } = await supabase
       .from('activities')
       .select(`
         id,
@@ -29,12 +31,14 @@ export class KonsumenService {
       `)
       .eq('actor_id', userId)
       .eq('biz_step', 'discarding')
+      .not('instance_id', 'is', null)
       .order('timestamp', { ascending: false });
 
-    if (error) throw error;
+    if (tier1Err) throw tier1Err;
 
-    // Normalisasi ke flat structure agar mudah dikonsumsi frontend
-    return (data ?? []).map((row: any) => ({
+    // Normalize Tier 1
+    const tier1Collections = (tier1Data ?? []).map((row: any) => ({
+      type: 'TIER_1',
       activity_id: row.id,
       collected_at: row.timestamp,
       instance_id: row.instance_id,
@@ -48,6 +52,42 @@ export class KonsumenService {
       category: row.product_instances.products.category,
       weight_grams: row.product_instances.products.weight_grams,
     }));
+
+    // Tier 2: barcode scans (no instance_id)
+    const { data: tier2Data, error: tier2Err } = await supabase
+      .from('activities')
+      .select(`
+        id,
+        timestamp,
+        gtin,
+        products (
+          product_name,
+          category
+        )
+      `)
+      .eq('actor_id', userId)
+      .eq('biz_step', 'discarding')
+      .is('instance_id', null)
+      .order('timestamp', { ascending: false });
+
+    if (tier2Err) throw tier2Err;
+
+    // Normalize Tier 2
+    const tier2Collections = (tier2Data ?? []).map((row: any) => ({
+      type: 'TIER_2',
+      activity_id: row.id,
+      collected_at: row.timestamp,
+      gtin: row.gtin,
+      product_name: row.products?.product_name || 'Unknown Product',
+      category: row.products?.category || 'Unknown',
+    }));
+
+    // Merge and sort by collected_at descending
+    const allCollections = [...tier1Collections, ...tier2Collections].sort(
+      (a, b) => new Date(b.collected_at).getTime() - new Date(a.collected_at).getTime()
+    );
+
+    return allCollections;
   }
 
   /**
@@ -187,5 +227,70 @@ export class KonsumenService {
       status_counts,
       sibling_count: siblingIds.length,
     };
+  }
+
+  /**
+   * Ambil statistik agregat untuk Tier 2 GTIN.
+   * Return jumlah scan events per biz_step dari tabel sku_aggregates.
+   */
+  static async getGtinAggregateStats(gtin: string) {
+    const { data: aggregates, error } = await supabase
+      .from('sku_aggregates')
+      .select('biz_step, count, last_scanned_at')
+      .eq('gtin', gtin)
+      .order('biz_step', { ascending: true });
+
+    if (error) throw error;
+
+    // Build stats map
+    const statsMap: Record<string, { count: number; last_scanned_at: string }> = {};
+    for (const agg of (aggregates ?? [])) {
+      statsMap[agg.biz_step] = {
+        count: agg.count,
+        last_scanned_at: agg.last_scanned_at,
+      };
+    }
+
+    return statsMap;
+  }
+
+  /**
+   * Ambil recent activities untuk Tier 2 GTIN (opsional untuk menampilkan aktivitas terakhir).
+   */
+  static async getGtinRecentActivities(gtin: string, limit: number = 5) {
+    const { data, error } = await supabase
+      .from('activities')
+      .select(`
+        id,
+        timestamp,
+        biz_step,
+        location_name,
+        facility_type,
+        tps_id,
+        tps_facilities (
+          name
+        ),
+        profiles (
+          name,
+          role
+        )
+      `)
+      .eq('gtin', gtin)
+      .is('instance_id', null)
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    return (data ?? []).map((row: any) => ({
+      activity_id: row.id,
+      timestamp: row.timestamp,
+      biz_step: row.biz_step,
+      location_name: row.location_name,
+      facility_type: row.facility_type,
+      tps_name: row.tps_facilities?.name || null,
+      actor_name: row.profiles?.name || 'Unknown',
+      actor_role: row.profiles?.role || null,
+    }));
   }
 }

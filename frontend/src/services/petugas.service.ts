@@ -162,5 +162,23 @@ export const scanInstance = async (
   if (!response.ok || data.status === 'error') {
     throw new Error(data.message || 'Gagal menyimpan data scan');
   }
+};
 
+/**
+ * Submit barcode scan untuk Tier 2 (agregat) ke backend.
+ */
+export const scanBarcode = async (
+  gtin: string,
+  payload: ScanPayload
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/instances/scan-barcode`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ gtin, ...payload }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal menyimpan scan barcode');
+  }
 };
