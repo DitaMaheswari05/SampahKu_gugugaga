@@ -243,18 +243,20 @@ export default function PetugasScan() {
 
               {/* FORM UPDATE PETUGAS */}
               <form onSubmit={handleSubmit} className={styles.formGroup}>
+                
+                {/* 1. Pilih Tipe Fasilitas Dulu */}
                 <div className={styles.formField}>
-                  <label className={styles.infoLabel}>Aksi / Biz Step</label>
-                  <select value={bizStep} onChange={e => setBizStep(e.target.value)} required className={styles.inputStyle}>
-                    <option value="collecting">Pickup (Collecting)</option>
-                    <option value="receiving">Terima di Fasilitas (Receiving)</option>
-                    <option value="inspecting">Sortir (Inspecting)</option>
-                    <option value="shipping">Kirim (Shipping)</option>
-                    <option value="recycling">Daur Ulang (Recycling)</option>
-                    <option value="disposing">Landfill (Disposing)</option>
+                  <label className={styles.infoLabel}>Tipe Fasilitas</label>
+                  <select value={facilityType} onChange={e => setFacilityType(e.target.value)} required className={styles.inputStyle}>
+                    <option value="TPS">TPS</option>
+                    <option value="BANK_SAMPAH">Bank Sampah</option>
+                    <option value="PENGEPUL">Pengepul</option>
+                    <option value="TPA">TPA</option>
+                    <option value="RECYCLER">Pabrik Daur Ulang</option>
                   </select>
                 </div>
 
+                {/* 2. Masukkan Nama Lokasi */}
                 <div className={styles.formField}>
                   <label className={styles.infoLabel}>Nama Lokasi</label>
                   <input
@@ -267,19 +269,20 @@ export default function PetugasScan() {
                   />
                 </div>
 
-                {['receiving', 'collecting', 'inspecting', 'shipping', 'recycling', 'disposing'].includes(bizStep) && (
-                  <div className={styles.formField}>
-                    <label className={styles.infoLabel}>Tipe Fasilitas</label>
-                    <select value={facilityType} onChange={e => setFacilityType(e.target.value)} required className={styles.inputStyle}>
-                      <option value="TPS">TPS</option>
-                      <option value="BANK_SAMPAH">Bank Sampah</option>
-                      <option value="PENGEPUL">Pengepul</option>
-                      <option value="TPA">TPA</option>
-                      <option value="RECYCLER">Pabrik Daur Ulang</option>
-                    </select>
-                  </div>
-                )}
+                {/* 3. Tentukan Aksi / Biz Step */}
+                <div className={styles.formField}>
+                  <label className={styles.infoLabel}>Aksi / Biz Step</label>
+                  <select value={bizStep} onChange={e => setBizStep(e.target.value)} required className={styles.inputStyle}>
+                    <option value="collecting">Pickup (Collecting)</option>
+                    <option value="receiving">Terima di Fasilitas (Receiving)</option>
+                    <option value="inspecting">Sortir (Inspecting)</option>
+                    <option value="shipping">Kirim (Shipping)</option>
+                    <option value="recycling">Daur Ulang (Recycling)</option>
+                    <option value="disposing">Landfill (Disposing)</option>
+                  </select>
+                </div>
 
+                {/* Muncul jika Aksi = Sortir (Inspecting) */}
                 {bizStep === 'inspecting' && (
                   <div className={styles.formField}>
                     <label className={styles.infoLabel}>Jenis Material</label>
@@ -293,16 +296,6 @@ export default function PetugasScan() {
                     </select>
                   </div>
                 )}
-
-                <div className={styles.formField}>
-                  <label className={styles.infoLabel}>Foto Bukti (Opsional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={e => setEvidenceFile(e.target.files?.[0] || null)}
-                    className={styles.fileInput}
-                  />
-                </div>
 
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.btnPrimary} disabled={loading}>
