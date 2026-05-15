@@ -1,3 +1,4 @@
+// konsumen service
 import { API_BASE_URL as API_URL } from '../config';
 
 function getAuthHeaders(): Record<string, string> {
@@ -204,8 +205,10 @@ export const getGtinAggregateStats = async (gtin: string): Promise<GtinAggregate
   return data.data || {};
 };
 
-/** GET /instances/:gtin/aggregate-stats?limit=5 — Aktivitas terbaru untuk Tier 2 GTIN */
-export const getGtinRecentActivities = async (gtin: string, limit: number = 5) => {
+/** GET /instances/:gtin/aggregate-activities?limit=N — Aktivitas Tier 2 untuk GTIN.
+ *  Gunakan limit besar (default 1000) agar semua aktivitas bisa di-aggregate per TPS.
+ */
+export const getGtinRecentActivities = async (gtin: string, limit: number = 1000) => {
   const response = await fetch(`${API_URL}/instances/${gtin}/aggregate-activities?limit=${limit}`, {
     headers: getAuthHeaders(),
   });

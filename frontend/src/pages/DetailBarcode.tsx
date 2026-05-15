@@ -1,69 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { getGtinAggregateStats, getGtinRecentActivities, GtinAggregateStats } from '../services/konsumen.service';
+import {
+  getGtinAggregateStats,
+  getGtinRecentActivities,
+} from '../services/konsumen.service';
 import { getProductDetail } from '../services/product.service';
+import styles from '../styles/DetailSampah.module.css';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/**
+ * Canonical order for the waste journey stages.
+ * 'commissioning' is intentionally omitted for Tier 2 (barcode) view —
+ * there are no individual instance commissioning events for aggregate GTINs.
+ */
+const JOURNEY_ORDER = [
+  'discarding',
+  'collecting',
+  'receiving',
+  'inspecting',
+  'shipping',
+  'recycling',
+  'disposing',
+];
 
 const BIZ_STEP_LABELS: Record<string, string> = {
-  commissioning: 'Terdaftar',
   discarding: 'Dibuang',
-  collecting: 'Terkumpul',
-  receiving: 'Diterima',
-  inspecting: 'Dipilah',
-  shipping: 'Diproses',
+  collecting: 'Diambil Petugas',
+  receiving: 'Diterima di Fasilitas',
+  inspecting: 'Dipilah / Disortir',
+  shipping: 'Dalam Pengiriman',
   recycling: 'Didaur Ulang',
-  disposing: 'Dibuang (TPA)',
+  disposing: 'Masuk Landfill',
 };
 
-const BIZ_STEP_COLORS: Record<string, string> = {
-  commissioning: '#3B82F6',
-  discarding: '#FBBF24',
-  collecting: '#10B981',
-  receiving: '#8B5CF6',
-  inspecting: '#EC4899',
-  shipping: '#F59E0B',
-  recycling: '#6366F1',
-  disposing: '#DC2626',
+const BIZ_STEP_DESC: Record<string, string> = {
+  discarding: 'Konsumen memindai dan mengkonfirmasi produk dibuang',
+  collecting: 'Petugas mengambil sampah dari titik kumpul',
+  receiving: 'Sampah diterima di fasilitas pengelolaan',
+  inspecting: 'Sampah dipilah berdasarkan jenis material',
+  shipping: 'Sampah dimuat dan dikirim ke fasilitas akhir',
+  recycling: 'Proses daur ulang selesai',
+  disposing: 'Sampah dikirim ke landfill/TPA',
 };
 
-interface RecentActivity {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const BackBtn: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <button className={styles.backBtn} onClick={onClick}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#101828" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+    </svg>
+  </button>
+);
+
+const LocationPin = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface RawActivity {
   activity_id: string;
   timestamp: string;
   biz_step: string;
-  location_name?: string;
-  facility_type?: string;
-  tps_name?: string;
+  location_name: string | null;
+  facility_type: string | null;
+  tps_name: string | null;
   actor_name: string;
-  actor_role: string;
+  actor_role: string | null;
 }
+
+/**
+ * Aggregated per-step data for the timeline.
+ * - `count`       : total scan events at this step (from activities rows)
+ * - `tpsBreakdown`: per-TPS item count (empty for 'discarding' per spec)
+ */
+interface JourneyStep {
+  biz_step: string;
+  count: number;
+  tpsBreakdown: Record<string, number>;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const DetailBarcode: React.FC = () => {
   const { gtin } = useParams<{ gtin: string }>();
   const navigate = useNavigate();
-  
-  const [stats, setStats] = useState<GtinAggregateStats | null>(null);
-  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+
+  const [stats, setStats] = useState<any>(null);
+  const [activities, setActivities] = useState<RawActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [productInfo, setProductInfo] = useState<any>(null);
 
   useEffect(() => {
+    if (!gtin) return;
     const loadData = async () => {
       setLoading(true);
       setError('');
       try {
-        if (!gtin) throw new Error('GTIN tidak ditemukan');
-
-        // Fetch aggregate stats
-        const statsData = await getGtinAggregateStats(gtin);
+        const [statsData, activitiesData, detail] = await Promise.all([
+          getGtinAggregateStats(gtin),
+          getGtinRecentActivities(gtin, 500),
+          getProductDetail(gtin),
+        ]);
         setStats(statsData);
-
-        // Fetch recent activities
-        const activitiesData = await getGtinRecentActivities(gtin, 5);
-        setRecentActivities(activitiesData);
-
-        const detail = await getProductDetail(gtin);
+        setActivities(activitiesData);
         setProductInfo(detail.product);
       } catch (e: any) {
         setError(e.message || 'Gagal memuat data barcode');
@@ -71,213 +117,216 @@ const DetailBarcode: React.FC = () => {
         setLoading(false);
       }
     };
-
     loadData();
   }, [gtin]);
 
+  // ── Total scan events ──────────────────────────────────────────────────────
+  const totalScans = useMemo(() => {
+    if (!stats) return 0;
+    return Object.values(stats).reduce((sum: number, item: any) => sum + item.count, 0);
+  }, [stats]);
+
+  /**
+   * Build the timeline journey from the `activities` table rows.
+   *
+   * Logic (mirrors DetailSampah BATCH view):
+   * 1. Group activities by biz_step → count total events, count per TPS.
+   * 2. For 'discarding' → skip TPS breakdown (per spec).
+   * 3. For all other steps → TPS label = tps_name (from tps_facilities join) or
+   *    location_name as fallback.
+   * 4. If a step exists in sku_aggregates (stats) but NOT in the activities
+   *    window (because limit was reached), fall back to the stats count with
+   *    an empty TPS breakdown so the step still appears in the timeline.
+   * 5. Sort by canonical JOURNEY_ORDER and skip steps with count === 0.
+   */
+  const journeySteps = useMemo((): JourneyStep[] => {
+    const stepMap: Record<string, { count: number; tpsBreakdown: Record<string, number> }> = {};
+
+    // -- Pass 1: build from real activity rows --
+    activities.forEach((act) => {
+      // Skip commissioning for Tier 2 view
+      if (act.biz_step === 'commissioning') return;
+
+      if (!stepMap[act.biz_step]) {
+        stepMap[act.biz_step] = { count: 0, tpsBreakdown: {} };
+      }
+      stepMap[act.biz_step].count += 1;
+
+      // For discarding: no TPS breakdown (consumer action, not TPS-based)
+      if (act.biz_step !== 'discarding') {
+        const tpsLabel = act.tps_name || act.location_name || 'TPS Tidak Diketahui';
+        stepMap[act.biz_step].tpsBreakdown[tpsLabel] =
+          (stepMap[act.biz_step].tpsBreakdown[tpsLabel] || 0) + 1;
+      }
+    });
+
+    // -- Pass 2: fill in missing steps from sku_aggregates (stats) --
+    // This covers steps where activities were beyond the fetch window.
+    if (stats) {
+      Object.entries(stats).forEach(([step, data]: [string, any]) => {
+        if (step === 'commissioning') return; // always skip
+        if (!stepMap[step] && data.count > 0) {
+          stepMap[step] = { count: data.count, tpsBreakdown: {} };
+        }
+      });
+    }
+
+    return JOURNEY_ORDER
+      .filter((step) => stepMap[step] && stepMap[step].count > 0)
+      .map((step) => ({
+        biz_step: step,
+        count: stepMap[step].count,
+        tpsBreakdown: stepMap[step].tpsBreakdown,
+      }));
+  }, [activities, stats]);
+
+  // ── Loading / Error states ─────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ background: '#F3F4F6', minHeight: '100vh' }}>
+      <div className={styles.mobileContainer}>
         <Header />
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-          Memuat data...
-        </div>
+        <main className={styles.content}>
+          <div className={styles.pageHeader}>
+            <BackBtn onClick={() => navigate(-1)} />
+            <h1 className={styles.pageTitle}>Detail Barcode</h1>
+          </div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+            Memuat data...
+          </div>
+        </main>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ background: '#F3F4F6', minHeight: '100vh' }}>
+      <div className={styles.mobileContainer}>
         <Header />
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#D4183D' }}>
-          <p>{error}</p>
-          <button onClick={() => navigate('/dashboard')} style={{
-            marginTop: '1rem',
-            padding: '0.5rem 1rem',
-            background: '#8BC34A',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}>
-            Kembali
-          </button>
-        </div>
+        <main className={styles.content}>
+          <div className={styles.pageHeader}>
+            <BackBtn onClick={() => navigate(-1)} />
+            <h1 className={styles.pageTitle}>Detail Barcode</h1>
+          </div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#D4183D', fontSize: '0.875rem' }}>
+            <p>{error}</p>
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                marginTop: '1rem', padding: '0.5rem 1rem', background: '#155DFC',
+                color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                fontWeight: 600, fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Kembali
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
 
-  const totalScans = stats ? Object.values(stats).reduce((sum: number, item: any) => sum + item.count, 0) : 0;
-
   return (
-    <div style={{ background: '#F3F4F6', minHeight: '100vh' }}>
+    <div className={styles.mobileContainer}>
       <Header />
 
-      <main style={{ maxWidth: '768px', margin: '0 auto', padding: '2rem 1rem' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '1.5rem',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            ←
-          </button>
-          <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Detail Barcode</h1>
-            <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.875rem' }}>GTIN: {gtin}</p>
+      <main className={styles.content}>
+        <div className={styles.pageHeader}>
+          <BackBtn onClick={() => navigate(-1)} />
+          <h1 className={styles.pageTitle}>Detail Barcode</h1>
+        </div>
+
+        {/* ── Product Info Card ───────────────────────────────────────────── */}
+        <div className={styles.card}>
+          <div className={styles.productHeader}>
+            <div className={styles.productIcon}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            </div>
+            <h2 className={styles.productName}>
+              {productInfo?.product_name || 'Unknown Product'}
+            </h2>
+          </div>
+
+          <div className={styles.infoGrid}>
+            <div className={styles.infoBlock}>
+              <span className={styles.infoLabel}>GTIN</span>
+              <span className={styles.infoValue} style={{ fontFamily: 'Consolas, monospace', fontSize: '0.8rem' }}>{gtin}</span>
+            </div>
+            <div className={styles.infoBlock}>
+              <span className={styles.infoLabel}>Tipe</span>
+              <span className={styles.infoValue}>Barcode Scan (Tier 2)</span>
+            </div>
+            <div className={styles.infoBlock}>
+              <span className={styles.infoLabel}>Kategori</span>
+              <span className={styles.infoValue}>{productInfo?.category || '—'}</span>
+            </div>
+            <div className={styles.infoBlock}>
+              <span className={styles.infoLabel}>Total Scan</span>
+              <span className={styles.infoValue} style={{ color: '#10B981' }}>{totalScans} Kali</span>
+            </div>
           </div>
         </div>
 
-        {/* Product Info Card */}
-        <div style={{
-          background: 'white',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          marginBottom: '2rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}>
-          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', fontWeight: 600 }}>
-            {productInfo?.product_name || 'Unknown Product'}
-          </h2>
-          <p style={{ margin: '0.5rem 0', color: '#666', fontSize: '0.875rem' }}>
-            <strong>Kategori:</strong> {productInfo?.category || 'Unknown'}
-          </p>
-          <p style={{ margin: '0.5rem 0', color: '#666', fontSize: '0.875rem' }}>
-            <strong>Tipe:</strong> Barcode Scan (Tier 2)
-          </p>
-          <p style={{ margin: '1rem 0 0', fontSize: '1.125rem', fontWeight: 600, color: '#8BC34A' }}>
-            Total Scan: {totalScans}
-          </p>
-        </div>
+        {/* ── Journey Timeline Card ────────────────────────────────────────── */}
+        <div className={`${styles.card} ${styles.timelineSection}`}>
+          <h2 className={styles.timelineTitle}>Perjalanan Sampah</h2>
 
-        {/* Aggregate Stats Bars */}
-        <div style={{
-          background: 'white',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          marginBottom: '2rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}>
-          <h3 style={{ margin: '0 0 1.5rem', fontSize: '1rem', fontWeight: 600 }}>Persebaran Aktivitas</h3>
+          {journeySteps.length === 0 ? (
+            <p style={{ color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>
+              Belum ada aktivitas tercatat.
+            </p>
+          ) : (
+            <div className={styles.timelineList}>
+              {journeySteps.map((step) => {
+                // Sort TPS entries by item count descending
+                const tpsEntries = Object.entries(step.tpsBreakdown).sort((a, b) => b[1] - a[1]);
+                // Show per-TPS breakdown only for non-discarding steps that have TPS data
+                const showTps = step.biz_step !== 'discarding' && tpsEntries.length > 0;
 
-          {stats && Object.keys(stats).length > 0 ? (
-            Object.entries(stats).map(([bizStep, data]: [string, any]) => {
-              const maxCount = Math.max(...Object.values(stats).map((item: any) => item.count), 1);
-              const barWidth = Math.round((data.count / maxCount) * 100);
-              return (
-                <div key={bizStep} style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                      {BIZ_STEP_LABELS[bizStep] || bizStep}
-                    </span>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#333' }}>
-                      {data.count} scan
-                    </span>
-                  </div>
-                  <div style={{
-                    background: '#E5E7EB',
-                    borderRadius: '4px',
-                    height: '24px',
-                    overflow: 'hidden',
-                  }}>
-                    <div
-                      style={{
-                        background: BIZ_STEP_COLORS[bizStep] || '#8BC34A',
-                        height: '100%',
-                        width: `${barWidth}%`,
-                        transition: 'width 0.3s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {data.count}
+                return (
+                  <div className={styles.timelineItem} key={step.biz_step}>
+                    <div className={styles.timelineIcon}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <div className={styles.timelineContent}>
+                      <div className={styles.timelineHeader}>
+                        <h3>{BIZ_STEP_LABELS[step.biz_step] || step.biz_step}</h3>
+                        <p>{BIZ_STEP_DESC[step.biz_step] || ''}</p>
+
+                        {/* Total scan events at this step */}
+                        <div style={{ marginTop: '0.5rem', fontWeight: 700, color: 'var(--primary)', fontSize: '0.875rem' }}>
+                          {step.count} item di tahap ini
+                        </div>
+                      </div>
+
+                      {/* Per-TPS item breakdown */}
+                      {showTps && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.5rem' }}>
+                          {tpsEntries.map(([tpsName, cnt]) => (
+                            <div
+                              key={tpsName}
+                              className={`${styles.timelineBadge} ${styles.badgeLocation}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', width: 'fit-content' }}
+                            >
+                              <LocationPin />
+                              <span>{tpsName}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--primary)' }}>×{cnt}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
-                    Scan terakhir: {new Date(data.last_scanned_at).toLocaleDateString('id-ID')}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div style={{ textAlign: 'center', color: '#999', padding: '1rem' }}>
-              Belum ada data aktivitas
+                );
+              })}
             </div>
           )}
         </div>
-
-        {/* Recent Activities */}
-        {recentActivities.length > 0 && (
-          <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: '1.5rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          }}>
-            <h3 style={{ margin: '0 0 1.5rem', fontSize: '1rem', fontWeight: 600 }}>Aktivitas Terbaru</h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {recentActivities.map((activity) => (
-                <div key={activity.activity_id} style={{
-                  borderLeft: `4px solid ${BIZ_STEP_COLORS[activity.biz_step] || '#8BC34A'}`,
-                  paddingLeft: '1rem',
-                  paddingTop: '0.5rem',
-                  paddingBottom: '0.5rem',
-                }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                    {BIZ_STEP_LABELS[activity.biz_step] || activity.biz_step}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                    {new Date(activity.timestamp).toLocaleDateString('id-ID', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                  {activity.tps_name && (
-                    <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                      <strong>Lokasi:</strong> {activity.tps_name}
-                    </div>
-                  )}
-                  <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-                    <strong>Oleh:</strong> {activity.actor_name} ({activity.actor_role})
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            marginTop: '2rem',
-            width: '100%',
-            padding: '0.75rem',
-            background: '#8BC34A',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Kembali ke Wallet
-        </button>
       </main>
     </div>
   );

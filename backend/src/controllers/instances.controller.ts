@@ -121,7 +121,7 @@ export const getGtinRecentActivities = async (req: Request, res: Response) => {
   try {
     const activities = await KonsumenService.getGtinRecentActivities(
       String(gtin),
-      Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 20) : 5
+      Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100
     );
     return res.status(200).json({ status: 'success', data: activities });
   } catch (e: any) {

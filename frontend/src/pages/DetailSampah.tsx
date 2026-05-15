@@ -135,11 +135,6 @@ export default function DetailSampah() {
   const statusCounts = data?.status_counts || null;
   const siblingCount = data?.sibling_count ?? 1;
 
-  /**
-   * BATCH journey: group activities by biz_step, count per location,
-   * sort in canonical JOURNEY_ORDER, skip steps with zero occurrences.
-   * For 'discarding', location detail is omitted per spec.
-   */
   const batchJourney = useMemo(() => {
     if (!isBatch || !activities.length) return [];
 
@@ -344,50 +339,50 @@ export default function DetailSampah() {
                   .filter((event: any) => event.biz_step !== 'commissioning')
                   .map((event: any) => (
                     <div className={styles.timelineItem} key={event.id}>
-                    <div className={styles.timelineIcon}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                    <div className={styles.timelineContent}>
-                      <div className={styles.timelineHeader}>
-                        <h3>{BIZ_STEP_LABELS[event.biz_step] || event.biz_step}</h3>
-                        <p>{BIZ_STEP_DESC[event.biz_step] || ''}</p>
+                      <div className={styles.timelineIcon}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       </div>
-                      <div className={styles.timelineBadges}>
-                        {event.location_name && (
-                          <div className={`${styles.timelineBadge} ${styles.badgeLocation}`}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                      <div className={styles.timelineContent}>
+                        <div className={styles.timelineHeader}>
+                          <h3>{BIZ_STEP_LABELS[event.biz_step] || event.biz_step}</h3>
+                          <p>{BIZ_STEP_DESC[event.biz_step] || ''}</p>
+                        </div>
+                        <div className={styles.timelineBadges}>
+                          {event.location_name && (
+                            <div className={`${styles.timelineBadge} ${styles.badgeLocation}`}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                              </svg>
+                              {event.location_name}
+                            </div>
+                          )}
+                          <div className={`${styles.timelineBadge} ${styles.badgeDate}`}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#155DFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                             </svg>
-                            {event.location_name}
+                            {formatDateTime(event.timestamp)}
                           </div>
-                        )}
-                        <div className={`${styles.timelineBadge} ${styles.badgeDate}`}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#155DFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                          </svg>
-                          {formatDateTime(event.timestamp)}
-                        </div>
-                        <div className={`${styles.timelineBadge} ${styles.badgeActor}`}>
-                          Oleh: {event.profiles?.name || 'Sistem'} ({event.profiles?.role || '—'})
-                        </div>
-                        {event.evidence_url && (
-                          <a
-                            href={event.evidence_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`${styles.timelineBadge} ${styles.badgeLocation}`}
-                            style={{ textDecoration: 'none' }}
-                          >
-                            📷 Lihat Bukti
-                          </a>
-                        )}
+                          <div className={`${styles.timelineBadge} ${styles.badgeActor}`}>
+                            Oleh: {event.profiles?.name || 'Sistem'} ({event.profiles?.role || '—'})
+                          </div>
+                          {event.evidence_url && (
+                            <a
+                              href={event.evidence_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`${styles.timelineBadge} ${styles.badgeLocation}`}
+                              style={{ textDecoration: 'none' }}
+                            >
+                              Lihat Bukti
+                            </a>
+                          )}
 
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )
           )}

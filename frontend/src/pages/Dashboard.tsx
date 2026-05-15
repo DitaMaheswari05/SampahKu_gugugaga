@@ -245,7 +245,7 @@ const Dashboard: React.FC = () => {
 
                     <div className={styles.itemRight}>
                       <span className={styles.statusBadge} style={{ background: '#E8F5E9', color: '#2E7D32' }}>
-                        📊 Barcode Scan
+                        Barcode Scan
                       </span>
                       <svg className={styles.chevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"></polyline>
