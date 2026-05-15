@@ -1,6 +1,48 @@
 import { supabase } from '../config/supabase';
 import { AuthService } from './auth.service';
 
+const DEFAULT_ITEM_WEIGHT_GRAMS = 50;
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function daysAgo(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+function pctChange(current: number, previous: number) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+function addCount(map: Record<string, number>, key: string | null | undefined, count: number) {
+  const safeKey = key || 'Tidak diketahui';
+  map[safeKey] = (map[safeKey] || 0) + count;
+}
+
+function formatTonFromGrams(grams: number) {
+  const tons = grams / 1_000_000;
+  if (tons >= 10) return `${Math.round(tons).toLocaleString('id-ID')} Ton`;
+  if (tons >= 1) return `${tons.toLocaleString('id-ID', { maximumFractionDigits: 1 })} Ton`;
+  return `${Math.round(grams / 1000).toLocaleString('id-ID')} Kg`;
+}
+
+function mapToDistribution(counts: Record<string, number>) {
+  const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+  return Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([label, count]) => ({
+      label,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+    }));
+}
+
 export class TpsService {
   /**
    * Register a new TPS facility (called by ADMIN_TPS).
@@ -60,6 +102,161 @@ export class TpsService {
 
     if (error) throw error;
     return data;
+  }
+
+  /**
+   * Dashboard analytics for the TPS managed by the current admin.
+   * Combines Tier 1 scan activities and Tier 2 aggregate barcode scans.
+   */
+  static async getMyTpsDashboard(adminId: string) {
+    const tps = await this.getMyTps(adminId);
+    if (!tps) return null;
+
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const yesterdayStart = startOfDay(daysAgo(1));
+    const weekStart = daysAgo(7);
+    const prevWeekStart = daysAgo(14);
+    const monthStart = daysAgo(30);
+    const prevMonthStart = daysAgo(60);
+
+    const { data: activities, error: actErr } = await supabase
+      .from('activities')
+      .select(`
+        id,
+        instance_id,
+        gtin,
+        biz_step,
+        timestamp,
+        product_instances (
+          products (
+            gtin,
+            product_name,
+            category,
+            weight_grams
+          )
+        )
+      `)
+      .eq('tps_id', tps.id);
+
+    if (actErr) throw actErr;
+
+    const { data: aggregates, error: aggErr } = await supabase
+      .from('sku_aggregates')
+      .select(`
+        gtin,
+        biz_step,
+        count,
+        products (
+          gtin,
+          product_name,
+          category,
+          weight_grams
+        )
+      `)
+      .eq('tps_id', tps.id);
+
+    if (aggErr) throw aggErr;
+
+    const activityRows = activities ?? [];
+    const aggregateRows = aggregates ?? [];
+
+    const tier1Activities = activityRows.filter((row: any) => row.instance_id);
+    const totalCount = tier1Activities.length + aggregateRows.reduce((sum: number, row: any) => sum + (row.count || 0), 0);
+
+    const todayCount = activityRows.filter((row: any) => new Date(row.timestamp) >= todayStart).length;
+    const yesterdayCount = activityRows.filter((row: any) => {
+      const ts = new Date(row.timestamp);
+      return ts >= yesterdayStart && ts < todayStart;
+    }).length;
+    const weekCount = activityRows.filter((row: any) => new Date(row.timestamp) >= weekStart).length;
+    const prevWeekCount = activityRows.filter((row: any) => {
+      const ts = new Date(row.timestamp);
+      return ts >= prevWeekStart && ts < weekStart;
+    }).length;
+    const monthCount = activityRows.filter((row: any) => new Date(row.timestamp) >= monthStart).length;
+    const prevMonthCount = activityRows.filter((row: any) => {
+      const ts = new Date(row.timestamp);
+      return ts >= prevMonthStart && ts < monthStart;
+    }).length;
+
+    const stageCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+    const productMap = new Map<string, {
+      gtin: string;
+      name: string;
+      count: number;
+      recentCount: number;
+      previousCount: number;
+    }>();
+    let weightGrams = 0;
+
+    for (const row of tier1Activities as any[]) {
+      const product = row.product_instances?.products;
+      const gtin = product?.gtin || row.gtin || 'unknown';
+      const name = product?.product_name || 'Unknown Product';
+      const weight = product?.weight_grams || DEFAULT_ITEM_WEIGHT_GRAMS;
+      const category = product?.category || 'Tidak diketahui';
+      const ts = new Date(row.timestamp);
+
+      addCount(stageCounts, row.biz_step, 1);
+      addCount(categoryCounts, category, 1);
+      weightGrams += weight;
+
+      const item = productMap.get(gtin) || { gtin, name, count: 0, recentCount: 0, previousCount: 0 };
+      item.count += 1;
+      if (ts >= monthStart) item.recentCount += 1;
+      if (ts >= prevMonthStart && ts < monthStart) item.previousCount += 1;
+      productMap.set(gtin, item);
+    }
+
+    for (const row of aggregateRows as any[]) {
+      const product = row.products;
+      const gtin = product?.gtin || row.gtin || 'unknown';
+      const name = product?.product_name || 'Unknown Product';
+      const count = row.count || 0;
+      const weight = product?.weight_grams || DEFAULT_ITEM_WEIGHT_GRAMS;
+      const category = product?.category || 'Tidak diketahui';
+
+      addCount(stageCounts, row.biz_step, count);
+      addCount(categoryCounts, category, count);
+      weightGrams += weight * count;
+
+      const item = productMap.get(gtin) || { gtin, name, count: 0, recentCount: 0, previousCount: 0 };
+      item.count += count;
+      item.recentCount += count;
+      productMap.set(gtin, item);
+    }
+
+    const topProducts = Array.from(productMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((item, index) => ({
+        rank: index + 1,
+        name: item.name,
+        gtin: item.gtin,
+        total: item.count,
+        trend: pctChange(item.recentCount, item.previousCount),
+      }));
+
+    return {
+      tps,
+      stats: {
+        volume_label: formatTonFromGrams(weightGrams),
+        volume_grams: Math.round(weightGrams),
+        total_waste: totalCount,
+        today: todayCount,
+        this_week: weekCount,
+        trends: {
+          total_month: pctChange(monthCount, prevMonthCount),
+          today: pctChange(todayCount, yesterdayCount),
+          this_week: pctChange(weekCount, prevWeekCount),
+        },
+      },
+      stages: mapToDistribution(stageCounts),
+      categories: mapToDistribution(categoryCounts),
+      top_products: topProducts,
+    };
   }
 
   /**

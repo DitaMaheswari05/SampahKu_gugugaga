@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Html5Qrcode } from 'html5-qrcode';
 import Header from '../components/Header';
 import {
@@ -37,8 +37,6 @@ const BIZ_STEP_LABELS: Record<string, string> = {
 type ScanStep = 'scan' | 'preview' | 'success' | 'error';
 
 export default function PetugasScan() {
-  const navigate = useNavigate();
-
   // TPS context
   const [tpsName, setTpsName] = useState<string | null>(null);
   const [tpsType, setTpsType] = useState<string | null>(null);
@@ -139,9 +137,9 @@ export default function PetugasScan() {
     setLoading(true);
     setErrorMsg('');
     try {
-      // Detect: GS1 Digital Link (contains /01/) vs standard barcode (digits only, 12-14 chars)
+      // Detect: GS1 Digital Link (contains /01/) vs standard barcode (digits only, 8-14 chars)
       const isGS1DigitalLink = decodedText.includes('/01/');
-      const isStandardBarcode = /^\d{12,14}$/.test(decodedText);
+      const isStandardBarcode = /^\d{8,14}$/.test(decodedText);
 
       if (isGS1DigitalLink) {
         // Tier 1: GS1 Digital Link
@@ -203,7 +201,7 @@ export default function PetugasScan() {
 
       // Detect: GS1 Digital Link vs standard barcode
       const isGS1DigitalLink = decodedText.includes('/01/');
-      const isStandardBarcode = /^\d{12,14}$/.test(decodedText);
+      const isStandardBarcode = /^\d{8,14}$/.test(decodedText);
 
       if (isGS1DigitalLink) {
         const data = await resolveGS1Link(decodedText);

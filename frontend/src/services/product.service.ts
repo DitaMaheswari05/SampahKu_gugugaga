@@ -42,6 +42,7 @@ export interface ProductInstance {
   id: string;
   gtin: string;
   identification_type: 'BATCH' | 'UNIQUE';
+  identity_number?: number | null;
   batch_number: string | null;
   serial_number: string | null;
   current_status: string;
@@ -109,6 +110,7 @@ export const createInstance = async (
   gtin: string,
   payload: {
     identification_type: 'BATCH' | 'UNIQUE';
+    identity_number?: number;
     batch_number?: string;
     serial_number?: string;
     quantity?: number;

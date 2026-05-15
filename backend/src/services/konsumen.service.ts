@@ -53,24 +53,35 @@ export class KonsumenService {
       weight_grams: row.product_instances.products.weight_grams,
     }));
 
-    // Tier 2: barcode scans (no instance_id)
+    // Tier 2: barcode scans (no instance_id). Fetch products separately because
+    // activities.gtin is intentionally denormalized and has no FK relationship.
     const { data: tier2Data, error: tier2Err } = await supabase
       .from('activities')
       .select(`
         id,
         timestamp,
-        gtin,
-        products (
-          product_name,
-          category
-        )
+        gtin
       `)
       .eq('actor_id', userId)
       .eq('biz_step', 'discarding')
       .is('instance_id', null)
+      .not('gtin', 'is', null)
       .order('timestamp', { ascending: false });
 
     if (tier2Err) throw tier2Err;
+
+    const tier2Gtins = Array.from(new Set((tier2Data ?? []).map((row: any) => row.gtin).filter(Boolean)));
+    let productsByGtin: Record<string, any> = {};
+
+    if (tier2Gtins.length > 0) {
+      const { data: tier2Products, error: productsErr } = await supabase
+        .from('products')
+        .select('gtin, product_name, category')
+        .in('gtin', tier2Gtins);
+
+      if (productsErr) throw productsErr;
+      productsByGtin = Object.fromEntries((tier2Products ?? []).map((p: any) => [p.gtin, p]));
+    }
 
     // Normalize Tier 2
     const tier2Collections = (tier2Data ?? []).map((row: any) => ({
@@ -78,8 +89,8 @@ export class KonsumenService {
       activity_id: row.id,
       collected_at: row.timestamp,
       gtin: row.gtin,
-      product_name: row.products?.product_name || 'Unknown Product',
-      category: row.products?.category || 'Unknown',
+      product_name: productsByGtin[row.gtin]?.product_name || 'Unknown Product',
+      category: productsByGtin[row.gtin]?.category || 'Unknown',
     }));
 
     // Merge and sort by collected_at descending
@@ -242,12 +253,16 @@ export class KonsumenService {
 
     if (error) throw error;
 
-    // Build stats map
+    // Build stats map. Sum rows defensively because NULL tps_id can produce
+    // more than one aggregate row in PostgreSQL unique constraints.
     const statsMap: Record<string, { count: number; last_scanned_at: string }> = {};
     for (const agg of (aggregates ?? [])) {
+      const existing = statsMap[agg.biz_step];
       statsMap[agg.biz_step] = {
-        count: agg.count,
-        last_scanned_at: agg.last_scanned_at,
+        count: (existing?.count || 0) + agg.count,
+        last_scanned_at: !existing || new Date(agg.last_scanned_at) > new Date(existing.last_scanned_at)
+          ? agg.last_scanned_at
+          : existing.last_scanned_at,
       };
     }
 

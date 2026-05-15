@@ -144,7 +144,7 @@ const Home: React.FC = () => {
 
           <div className={`${styles.card} ${styles.cardBlue}`}>
             <div className={styles.cardIcon}>
-              <img src="/assets/logo_blockchain.png" alt="Blockchain" />
+              <img src="/assets/logo_blockchain.png" alt="Hash-chain verification" />
             </div>
             <h3>Hash-Chain Verified</h3>
             <p>Data diverifikasi dengan hash-chain SHA-256 untuk memastikan integritas dan transparansi setiap event</p>

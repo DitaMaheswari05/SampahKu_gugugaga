@@ -69,11 +69,21 @@ export class ProductService {
    */
   static async createInstance(gtin: string, brandId: string, payload: {
     identification_type: 'BATCH' | 'UNIQUE';
+    identity_number?: number;
     batch_number?: string;
     serial_number?: string;
     quantity?: number; // Only for BATCH: how many physical instances this QR represents
   }) {
-    const { identification_type, batch_number, serial_number, quantity = 1 } = payload;
+    const { identification_type, quantity = 1 } = payload;
+    const parsedIdentity = payload.identity_number
+      ?? Number(String(identification_type === 'BATCH' ? payload.batch_number : payload.serial_number).replace(/\D/g, ''));
+
+    if (!Number.isInteger(parsedIdentity) || parsedIdentity <= 0) {
+      throw new Error('identity_number must be a positive number');
+    }
+
+    const batch_number = identification_type === 'BATCH' ? `BATCH-${parsedIdentity}` : null;
+    const serial_number = identification_type === 'UNIQUE' ? `SERIAL-${parsedIdentity}` : null;
 
     // Verify the product belongs to this brand
     const { data: product, error: pErr } = await supabase
@@ -88,10 +98,8 @@ export class ProductService {
     // Build GS1 Digital Link URL
     let gs1Url: string;
     if (identification_type === 'UNIQUE') {
-      if (!serial_number) throw new Error('serial_number required for UNIQUE type');
       gs1Url = `${GS1_BASE_URL}/01/${gtin}/21/${serial_number}`;
     } else {
-      if (!batch_number) throw new Error('batch_number required for BATCH type');
       gs1Url = `${GS1_BASE_URL}/01/${gtin}/10/${batch_number}`;
     }
 
@@ -104,6 +112,7 @@ export class ProductService {
       identification_type,
       batch_number: batch_number || null,
       serial_number: serial_number || null,
+      identity_number: parsedIdentity,
       current_status: 'IN_MARKET',
       last_updated: now,
     }));

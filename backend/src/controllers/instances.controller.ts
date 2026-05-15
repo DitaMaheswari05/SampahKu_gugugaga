@@ -5,7 +5,7 @@ import { ROLES } from '../constants';
 
 export const scanInstance = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { biz_step, location_name, facility_type, coordinates, epcis_body, evidence_url } = req.body;
+  const { biz_step, location_name, facility_type, coordinates, epcis_body, evidence_url, material_type } = req.body;
 
   if (!req.profile) return res.status(403).json({ status: 'error', message: 'Profile required' });
 
@@ -21,7 +21,7 @@ export const scanInstance = async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await InstancesService.recordScan(String(id), String(req.profile.id), String(biz_step), { location_name, facility_type, coordinates, epcis_body, evidence_url });
+    const result = await InstancesService.recordScan(String(id), String(req.profile.id), String(biz_step), { location_name, facility_type, coordinates, epcis_body, evidence_url, material_type });
     return res.status(201).json({ status: 'success', data: result });
   } catch (e: any) {
     console.error(e);
@@ -35,7 +35,7 @@ export const scanInstance = async (req: Request, res: Response) => {
  * Body: { gtin, biz_step, location_name, facility_type, coordinates, evidence_url }
  */
 export const scanBarcode = async (req: Request, res: Response) => {
-  const { gtin, biz_step, location_name, facility_type, coordinates, evidence_url } = req.body;
+  const { gtin, biz_step, location_name, facility_type, coordinates, evidence_url, material_type } = req.body;
 
   if (!req.profile) return res.status(403).json({ status: 'error', message: 'Profile required' });
   if (req.profile.role !== 'PETUGAS') {
@@ -51,7 +51,7 @@ export const scanBarcode = async (req: Request, res: Response) => {
       String(gtin),
       String(req.profile.id),
       String(biz_step),
-      { location_name, facility_type, coordinates, evidence_url }
+      { location_name, facility_type, coordinates, evidence_url, material_type }
     );
     return res.status(201).json({ status: 'success', data: result });
   } catch (e: any) {
@@ -105,5 +105,27 @@ export const getGtinAggregateStats = async (req: Request, res: Response) => {
   } catch (e: any) {
     console.error(e);
     return res.status(500).json({ status: 'error', message: e.message || 'Failed to fetch aggregate stats' });
+  }
+};
+
+/**
+ * Get recent activities untuk Tier 2 GTIN.
+ * GET /instances/:gtin/aggregate-activities?limit=5
+ */
+export const getGtinRecentActivities = async (req: Request, res: Response) => {
+  const { gtin } = req.params;
+  const limit = Number(req.query.limit || 5);
+
+  if (!req.profile) return res.status(403).json({ status: 'error', message: 'Profile required' });
+
+  try {
+    const activities = await KonsumenService.getGtinRecentActivities(
+      String(gtin),
+      Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 20) : 5
+    );
+    return res.status(200).json({ status: 'success', data: activities });
+  } catch (e: any) {
+    console.error(e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Failed to fetch aggregate activities' });
   }
 };

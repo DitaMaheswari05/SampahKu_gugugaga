@@ -630,3 +630,52 @@
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .mobileContainer {
+    max-width: none;
+    min-height: auto;
+    margin: 0;
+    box-shadow: none;
+    background: #ffffff;
+    overflow: visible;
+  }
+
+  .content {
+    padding: 0;
+    gap: 14px;
+  }
+
+  .exportBtn {
+    display: none;
+  }
+
+  .dashboardTitleArea,
+  .infoScrollWrapper,
+  .statsGrid,
+  .chartCard,
+  .tableCard {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .infoScrollWrapper,
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tableScroll {
+    overflow: visible;
+  }
+}

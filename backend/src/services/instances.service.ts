@@ -237,7 +237,10 @@ export class InstancesService {
 
     // ── Insert Tier 2 activity ──
     const timestamp = new Date().toISOString();
-    const epcisBody = payload.epcis_body || {};
+    let epcisBody = payload.epcis_body || {};
+    if (biz_step === 'inspecting' && payload.material_type) {
+      epcisBody = { ...epcisBody, material_type: payload.material_type };
+    }
 
     const activity = {
       instance_id: null, // Tier 2 = no instance
@@ -285,9 +288,9 @@ export class InstancesService {
       .from('sku_aggregates')
       .select('id, count')
       .eq('gtin', product.gtin)
-      .eq('tps_id', null) // No TPS for konsumen discard
+      .is('tps_id', null) // No TPS for konsumen discard
       .eq('biz_step', 'discarding')
-      .single();
+      .maybeSingle();
 
     let aggregateId: string;
 

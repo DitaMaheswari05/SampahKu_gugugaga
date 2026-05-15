@@ -103,23 +103,22 @@ SampahKu_gugugaga/
 │       ├── app.ts          ← Setup app (middleware, routing) — dipisah dari server
 │       ├── config/
 │       │   └── supabase.ts ← Singleton Supabase client (Service Role)
-│       ├── constants.ts    ← ROLES enum, POINTS config
+│       ├── constants.ts    ← ROLES enum dan shared constants
 │       ├── controllers/
 │       │   ├── auth.controller.ts       ← Register, login, getMe (dengan try/catch)
-│       │   ├── instances.controller.ts  ← Scan instance (biz_step tracking)
+│       │   ├── instances.controller.ts  ← Scan Tier 1/Tier 2, aggregate stats ✅
 │       │   ├── konsumen.controller.ts   ← getMyCollections, getInstanceActivities ✅
 │       │   └── product.controller.ts   ← CRUD produk & instances, QR (BRAND only) ✅
 │       ├── routes/
 │       │   ├── auth.ts
-│       │   ├── instances.ts    ← POST /:id/scan, GET /:id/activities ✅
+│       │   ├── instances.ts    ← Tier 1/Tier 2 scan endpoints ✅
 │       │   ├── products.ts     ← /products/* endpoints ✅
 │       │   └── users.ts        ← GET /users/me/collections ✅
 │       ├── services/
 │       │   ├── auth.service.ts      ← Register & Login via Ephemeral Client + profiles upsert ✅
-│       │   ├── instances.service.ts ← recordScan (hash SHA-256 + activity + points) ✅
-│       │   ├── konsumen.service.ts  ← getMyCollections, getInstanceActivities ✅
-│       │   ├── points.service.ts
-│       │   └── product.service.ts  ← createProduct, createInstance+QR, getProducts+stats ✅
+│       │   ├── instances.service.ts ← recordScan, recordAggregateScan, recordBarcodeDiscard ✅
+│       │   ├── konsumen.service.ts  ← wallet Tier 1/Tier 2, detail stats ✅
+│       │   └── product.service.ts  ← createProduct, createInstance+QR, OFF resolve ✅
 │       ├── middlewares/
 │       │   └── auth.middleware.ts   ← protect (JWT verify + profile fetch w/ user_metadata fallback) ✅
 │       └── types/
@@ -310,7 +309,7 @@ Inti sistem: setiap event dalam perjalanan sampah. Mengikuti standar **EPCIS 2.0
 id              uuid PK
 instance_id     uuid FK → product_instances.id  -- nullable untuk Tier 2
 aggregate_id    uuid FK → sku_aggregates.id
-gtin            varchar FK → products.gtin
+gtin            varchar  -- denormalized GTIN for Tier 2 wallet/stats queries
 actor_id        uuid FK → profiles.id
 tps_id          uuid FK → tps_facilities.id  -- TPS tempat aktivitas terjadi (NULL untuk konsumen/brand)
 event_type      text DEFAULT 'ObjectEvent'
@@ -528,9 +527,10 @@ Base URL: `http://localhost:5000` (dev)
 |---|---|---|---|---|
 | GET | `/instances/:id/activities` | Timeline perjalanan instance | All | ✅ |
 | POST | `/instances/:id/scan` | Scan & catat aktivitas (+ geo-verification untuk PETUGAS) | KONSUMEN / PETUGAS | ✅ |
-| POST | `/instances/scan-barcode` | Scan/update untuk GTIN biasa (Tier 2, petugas) | PETUGAS | ⬜ TODO |
-| POST | `/instances/discard-barcode` | Simpan discard GTIN ke wallet konsumen (Tier 2) | KONSUMEN | ⬜ TODO |
-| GET | `/instances/:gtin/aggregate-stats` | Ambil statistik agregat per biz_step untuk GTIN | All | ⬜ TODO |
+| POST | `/instances/scan-barcode` | Scan/update untuk GTIN biasa (Tier 2, petugas) | PETUGAS | ✅ |
+| POST | `/instances/discard-barcode` | Simpan discard GTIN ke wallet konsumen (Tier 2) | KONSUMEN | ✅ |
+| GET | `/instances/:gtin/aggregate-stats` | Ambil statistik agregat per biz_step untuk GTIN | All | ✅ |
+| GET | `/instances/:gtin/aggregate-activities` | Ambil aktivitas terbaru Tier 2 untuk GTIN | All | ✅ |
 
 ### Uploads
 | Method | Endpoint | Deskripsi | Role | Status |

@@ -208,11 +208,7 @@ const ProductManagement: React.FC = () => {
   const [detailData, setDetailData] = useState<ProductDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // User info
-  const userRaw = localStorage.getItem('user');
-  // coba buat deploy (error disini)
-  // const user = userRaw ? JSON.parse(userRaw) : null;
-
+  // User info available via auth header on API calls — no client-side parse needed
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -603,7 +599,12 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier) {
-      setError(type === 'BATCH' ? 'Batch Number wajib diisi' : 'Serial Number wajib diisi');
+      setError('Nomor identitas wajib diisi');
+      return;
+    }
+    const identityNumber = Number(identifier);
+    if (!Number.isInteger(identityNumber) || identityNumber <= 0) {
+      setError('Nomor identitas harus berupa angka positif');
       return;
     }
     const qty = parseInt(quantity, 10);
@@ -616,10 +617,8 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
     try {
       const result = await createInstance(gtin, {
         identification_type: type,
-        ...(type === 'BATCH'
-          ? { batch_number: identifier, quantity: qty }
-          : { serial_number: identifier }
-        ),
+        identity_number: identityNumber,
+        quantity: type === 'BATCH' ? qty : undefined,
       });
       onCreated({ gs1Url: result.gs1Url, qrDataUrl: result.qrDataUrl });
     } catch (e: any) {
@@ -666,16 +665,20 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>
-              {type === 'BATCH' ? 'Batch Number' : 'Serial Number'}
+              Nomor Identitas
             </label>
             <input
               className={styles.formInput}
-              placeholder={type === 'BATCH' ? 'Contoh: BATCH-2026-001' : 'Contoh: SN-001'}
+              placeholder={type === 'BATCH' ? 'Contoh: 12345' : 'Contoh: 98765'}
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, ''))}
               id="input-identifier"
+              inputMode="numeric"
               required
             />
+            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+              Sistem akan otomatis menyimpan sebagai <strong>{type === 'BATCH' ? `BATCH-${identifier || '...'}` : `SERIAL-${identifier || '...'}`}</strong>.
+            </p>
           </div>
 
           {type === 'BATCH' && (
@@ -701,8 +704,8 @@ const CreateInstanceModal: React.FC<CreateInstanceModalProps> = ({ gtin, onClose
             <strong>GS1 Digital Link Preview:</strong><br />
             <code>
               {type === 'UNIQUE'
-                ? `https://sampahku.id/01/${gtin}/21/${identifier || '...'}`
-                : `https://sampahku.id/01/${gtin}/10/${identifier || '...'}`
+                ? `https://sampahku.id/01/${gtin}/21/SERIAL-${identifier || '...'}`
+                : `https://sampahku.id/01/${gtin}/10/BATCH-${identifier || '...'}`
               }
             </code>
           </div>

@@ -120,6 +120,22 @@ export const discardInstance = async (instanceId: string): Promise<void> => {
   }
 };
 
+/** POST /instances/discard-barcode — Konfirmasi buang sampah dari barcode standar */
+export const discardBarcode = async (gtin: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/instances/discard-barcode`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      gtin,
+      location_name: 'Pembuangan Konsumen',
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok || data.status === 'error') {
+    throw new Error(data.message || 'Gagal menyimpan barcode sampah');
+  }
+};
+
 /** Resolve GS1 Digital Link URL ke data product instance */
 export const resolveGS1Link = async (url: string) => {
   const parts = url.split('/');

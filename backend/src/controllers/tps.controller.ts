@@ -38,6 +38,20 @@ export const getMyTps = async (req: Request, res: Response) => {
   }
 };
 
+export const getMyTpsDashboard = async (req: Request, res: Response) => {
+  try {
+    if (req.profile?.role !== 'ADMIN_TPS') {
+      return res.status(403).json({ status: 'error', message: 'Hanya ADMIN_TPS.' });
+    }
+
+    const dashboard = await TpsService.getMyTpsDashboard(req.profile.id);
+    return res.json({ status: 'success', data: dashboard });
+  } catch (e: any) {
+    console.error('getMyTpsDashboard error:', e);
+    return res.status(500).json({ status: 'error', message: e.message || 'Gagal memuat dashboard TPS' });
+  }
+};
+
 export const createPetugas = async (req: Request, res: Response) => {
   try {
     if (req.profile?.role !== 'ADMIN_TPS') {

@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { protect } from '../middlewares/auth.middleware';
-import { scanInstance, scanBarcode, discardBarcode, getGtinAggregateStats } from '../controllers/instances.controller';
+import {
+  scanInstance,
+  scanBarcode,
+  discardBarcode,
+  getGtinAggregateStats,
+  getGtinRecentActivities,
+} from '../controllers/instances.controller';
 import { getInstanceActivities } from '../controllers/konsumen.controller';
 
 const router = Router();
@@ -19,5 +25,8 @@ router.post('/discard-barcode', protect, discardBarcode);
 
 /** GET /instances/:gtin/aggregate-stats — Ambil statistik agregat Tier 2 */
 router.get('/:gtin/aggregate-stats', protect, getGtinAggregateStats);
+
+/** GET /instances/:gtin/aggregate-activities — Ambil aktivitas terbaru Tier 2 */
+router.get('/:gtin/aggregate-activities', protect, getGtinRecentActivities);
 
 export default router;

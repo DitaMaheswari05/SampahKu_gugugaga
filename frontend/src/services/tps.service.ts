@@ -56,6 +56,39 @@ export interface PetugasItem {
   created_at: string;
 }
 
+export interface DashboardDistributionItem {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface DashboardTopProduct {
+  rank: number;
+  name: string;
+  gtin: string;
+  total: number;
+  trend: number;
+}
+
+export interface AdminTpsDashboardData {
+  tps: TpsData;
+  stats: {
+    volume_label: string;
+    volume_grams: number;
+    total_waste: number;
+    today: number;
+    this_week: number;
+    trends: {
+      total_month: number;
+      today: number;
+      this_week: number;
+    };
+  };
+  stages: DashboardDistributionItem[];
+  categories: DashboardDistributionItem[];
+  top_products: DashboardTopProduct[];
+}
+
 // --- Functions ---
 
 /**
@@ -89,6 +122,23 @@ export const getMyTps = async (): Promise<TpsData | null> => {
     // If 404 or no TPS, return null
     if (response.status === 404) return null;
     throw new Error(result.message || 'Gagal memuat data TPS');
+  }
+
+  return result.data;
+};
+
+/**
+ * Get analytics dashboard TPS milik admin yang sedang login.
+ */
+export const getMyTpsDashboard = async (): Promise<AdminTpsDashboardData | null> => {
+  const response = await fetch(`${API_URL}/tps/me/dashboard`, {
+    headers: getAuthHeaders(),
+  });
+
+  const result = await response.json();
+  if (!response.ok || result.status === 'error') {
+    if (response.status === 404) return null;
+    throw new Error(result.message || 'Gagal memuat dashboard TPS');
   }
 
   return result.data;

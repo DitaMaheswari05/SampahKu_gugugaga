@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import Header from '../components/Header';
-import { resolveGS1Link, discardInstance } from '../services/konsumen.service';
+import { resolveGS1Link, discardInstance, discardBarcode } from '../services/konsumen.service';
 import styles from '../styles/KonsumenScan.module.css';
 
 
@@ -12,6 +12,8 @@ export default function KonsumenScan() {
   const navigate = useNavigate();
   const [step, setStep] = useState<ScanStep>('scan');
   const [instance, setInstance] = useState<any>(null);
+  const [scannedGtin, setScannedGtin] = useState<string | null>(null);
+  const [scanType, setScanType] = useState<'TIER_1' | 'TIER_2' | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -36,12 +38,25 @@ export default function KonsumenScan() {
     setIsCameraOpen(false);
   }, []);
 
-  const handleResolved = useCallback(async (url: string) => {
+  const handleResolved = useCallback(async (decodedText: string) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const data = await resolveGS1Link(url);
-      setInstance(data);
+      const isGS1DigitalLink = decodedText.includes('/01/');
+      const isStandardBarcode = /^\d{8,14}$/.test(decodedText);
+
+      if (isGS1DigitalLink) {
+        const data = await resolveGS1Link(decodedText);
+        setInstance(data);
+        setScannedGtin(null);
+        setScanType('TIER_1');
+      } else if (isStandardBarcode) {
+        setInstance(null);
+        setScannedGtin(decodedText);
+        setScanType('TIER_2');
+      } else {
+        throw new Error('Format QR/barcode tidak dikenali. Gunakan GS1 Digital Link atau barcode 8-14 digit.');
+      }
       setStep('preview');
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -98,11 +113,15 @@ export default function KonsumenScan() {
   };
 
   const handleConfirm = async () => {
-    if (!instance) return;
+    if (!instance && !scannedGtin) return;
     setLoading(true);
     setErrorMsg('');
     try {
-      await discardInstance(instance.id);
+      if (scanType === 'TIER_1' && instance) {
+        await discardInstance(instance.id);
+      } else if (scanType === 'TIER_2' && scannedGtin) {
+        await discardBarcode(scannedGtin);
+      }
       setStep('success');
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -114,6 +133,8 @@ export default function KonsumenScan() {
 
   const handleRetake = () => {
     setInstance(null);
+    setScannedGtin(null);
+    setScanType(null);
     setErrorMsg('');
     setStep('scan');
   };
@@ -170,7 +191,7 @@ export default function KonsumenScan() {
           )}
 
           {/* STATE 2: PREVIEW DATA SEBELUM KONFIRMASI */}
-          {step === 'preview' && instance && (
+          {step === 'preview' && scanType === 'TIER_1' && instance && (
             <>
               <div className={styles.qrPlaceholder}>
                 <img src="/assets/logo_qr.png" alt="QR Preview" className={styles.qrImage} />
@@ -204,6 +225,38 @@ export default function KonsumenScan() {
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
                 <button className={styles.btnPrimary} onClick={handleConfirm} disabled={loading}>
                   {loading ? 'Menyimpan...' : 'Konfirmasi Buang Sampah'}
+                </button>
+                <button className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
+                  Pindai Ulang
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'preview' && scanType === 'TIER_2' && scannedGtin && (
+            <>
+              <div className={styles.qrPlaceholder}>
+                <img src="/assets/logo_qr.png" alt="Barcode Preview" className={styles.qrImage} />
+              </div>
+
+              <div className={styles.infoContainer}>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Tipe</span>
+                  <span className={styles.infoValue}>Barcode Scan</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>GTIN</span>
+                  <span className={`${styles.infoValue} ${styles.infoValueMono}`}>{scannedGtin}</span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Catatan</span>
+                  <span className={styles.infoValue}>Produk akan dicatat sebagai histori agregat.</span>
+                </div>
+              </div>
+
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+                <button className={styles.btnPrimary} onClick={handleConfirm} disabled={loading}>
+                  {loading ? 'Menyimpan...' : 'Konfirmasi Buang Barcode'}
                 </button>
                 <button className={styles.btnSecondary} onClick={handleRetake} disabled={loading}>
                   Pindai Ulang

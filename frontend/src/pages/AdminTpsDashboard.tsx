@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import {
-  getMyTps,
+  getMyTpsDashboard,
   registerTps,
-  getTpsPetugas,
   TpsData,
-  PetugasItem,
+  AdminTpsDashboardData,
+  DashboardDistributionItem,
 } from '../services/tps.service';
 import styles from '../styles/AdminTpsDashboard.module.css';
 
@@ -20,14 +20,46 @@ const ALL_BIZ_STEPS = [
 
 const TPS_TYPES = ['TPS', 'TPS3R', 'Bank Sampah', 'TPST', 'TPA', 'Pengepul', 'Recycler'];
 
-// Mock Leaderboard Data (Fallback/Requirement)
-const MOCK_LEADERBOARD = [
-  { id: 1, name: 'Botol Aqua 600ml', gtin: '8992753020012', total: '8,420', trend: 12, up: true },
-  { id: 2, name: 'Kemasan Indomie', gtin: '8992775001034', total: '6,230', trend: 8, up: true },
-  { id: 3, name: 'Botol Teh Pucuk', gtin: '8992753030023', total: '5,180', trend: 3, up: false },
-  { id: 4, name: 'Kaleng Coca-Cola', gtin: '8992761111045', total: '4,560', trend: 15, up: true },
-  { id: 5, name: 'Botol Sprite', gtin: '8992761111052', total: '3,920', trend: 5, up: true },
-];
+const CHART_COLORS = ['#10B981', '#3B82F6', '#FD9D24', '#8B5CF6', '#EC4899', '#64748B'];
+
+const BIZ_STEP_LABELS: Record<string, string> = {
+  collecting: 'Terkumpul',
+  receiving: 'Diterima',
+  inspecting: 'Dipilah',
+  shipping: 'Diproses',
+  recycling: 'Didaur Ulang',
+  disposing: 'TPA',
+};
+
+const formatNumber = (value: number) => value.toLocaleString('id-ID');
+
+const formatTrendText = (value: number, label: string) => {
+  if (value === 0) return `0% dari ${label}`;
+  return `${value > 0 ? '+' : ''}${value}% dari ${label}`;
+};
+
+const buildConicGradient = (items: DashboardDistributionItem[]) => {
+  if (items.length === 0) return 'conic-gradient(#E5E7EB 0% 100%)';
+
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  if (total === 0) return 'conic-gradient(#E5E7EB 0% 100%)';
+
+  let start = 0;
+  const segments = items.map((item, index) => {
+    const end = index === items.length - 1 ? 100 : start + (item.count / total) * 100;
+    const segment = `${CHART_COLORS[index % CHART_COLORS.length]} ${start}% ${end}%`;
+    start = end;
+    return segment;
+  });
+
+  return `conic-gradient(${segments.join(', ')})`;
+};
+
+const getDominantLabel = (items: DashboardDistributionItem[], translateLabel = false) => {
+  if (items.length === 0) return 'Belum ada data';
+  const item = items[0];
+  return `${translateLabel ? (BIZ_STEP_LABELS[item.label] || item.label) : item.label}: ${item.count}`;
+};
 
 const Icons = {
   Download: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>,
@@ -50,7 +82,8 @@ const AdminTpsDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tps, setTps] = useState<TpsData | null>(null);
-  const [petugasList, setPetugasList] = useState<PetugasItem[]>([]);
+  const [dashboard, setDashboard] = useState<AdminTpsDashboardData | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Register Form State
   const [tpsName, setTpsName] = useState('');
@@ -69,13 +102,11 @@ const AdminTpsDashboard: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const tpsData = await getMyTps();
-      setTps(tpsData);
+      const dashboardData = await getMyTpsDashboard();
+      setDashboard(dashboardData);
+      setTps(dashboardData?.tps || null);
 
-      if (tpsData) {
-        const petugas = await getTpsPetugas(tpsData.id);
-        setPetugasList(petugas);
-      }
+      // Petugas dikelola di halaman ManajemenPetugas
     } catch (e: any) {
       setError(e.message || 'Gagal memuat data');
     } finally {
@@ -115,6 +146,32 @@ const AdminTpsDashboard: React.FC = () => {
       setError(e.message || 'Gagal mendaftarkan TPS');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const renderLegend = (items: DashboardDistributionItem[], translateLabel = false) => {
+    if (items.length === 0) {
+      return <div className={styles.legendItem}>Belum ada data scan</div>;
+    }
+
+    return items.slice(0, 6).map((item, index) => (
+      <div className={styles.legendItem} key={item.label}>
+        <div className={styles.legendColor} style={{ background: CHART_COLORS[index % CHART_COLORS.length] }}></div>
+        {translateLabel ? (BIZ_STEP_LABELS[item.label] || item.label) : item.label}: {item.percentage}%
+      </div>
+    ));
+  };
+
+  const handleExportPdf = async () => {
+    setExporting(true);
+    setError('');
+
+    try {
+      window.print();
+    } catch (e: any) {
+      setError(e.message || 'Gagal membuka dialog ekspor PDF');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -201,14 +258,19 @@ const AdminTpsDashboard: React.FC = () => {
           </div>
         )}
 
-        {tps && (
+        {tps && dashboard && (
           <>
             {/* ── Dashboard Title ── */}
             <div className={styles.dashboardTitleArea}>
               <h1 className={styles.dashboardTitle}>Dashboard Admin <span>{tps.name}</span></h1>
               <p className={styles.dashboardSubtitle}>Ringkasan performa pengelolaan sampah produk Anda</p>
-              <button className={styles.exportBtn}>
-                <Icons.Download /> Ekspor PDF
+              <button
+                className={styles.exportBtn}
+                onClick={handleExportPdf}
+                disabled={exporting}
+                data-export-hidden="true"
+              >
+                <Icons.Download /> {exporting ? 'Menyiapkan...' : 'Ekspor PDF'}
               </button>
             </div>
 
@@ -262,8 +324,8 @@ const AdminTpsDashboard: React.FC = () => {
                   <span className={styles.statTitle}>Volume Sampah</span>
                   <div className={styles.statIconBox}><Icons.Volume /></div>
                 </div>
-                <h3 className={styles.statValue}>1,2 Ton</h3>
-                <div className={styles.statTrend}><Icons.TrendUp /> +12% dari bulan lalu</div>
+                <h3 className={styles.statValue}>{dashboard.stats.volume_label}</h3>
+                <div className={styles.statTrend}><Icons.TrendUp /> Estimasi berat scan</div>
               </div>
 
               <div className={styles.statCard}>
@@ -271,8 +333,11 @@ const AdminTpsDashboard: React.FC = () => {
                   <span className={styles.statTitle}>Total Sampah</span>
                   <div className={styles.statIconBox}><Icons.Total /></div>
                 </div>
-                <h3 className={styles.statValue}>28,350</h3>
-                <div className={styles.statTrend}><Icons.TrendUp /> +15% dari bulan lalu</div>
+                <h3 className={styles.statValue}>{formatNumber(dashboard.stats.total_waste)}</h3>
+                <div className={styles.statTrend}>
+                  {dashboard.stats.trends.total_month >= 0 ? <Icons.TrendUp /> : <Icons.TrendDown />}
+                  {formatTrendText(dashboard.stats.trends.total_month, 'bulan lalu')}
+                </div>
               </div>
 
               <div className={styles.statCard}>
@@ -280,8 +345,11 @@ const AdminTpsDashboard: React.FC = () => {
                   <span className={styles.statTitle}>Hari ini</span>
                   <div className={styles.statIconBox}><Icons.CalendarDay /></div>
                 </div>
-                <h3 className={styles.statValue}>211</h3>
-                <div className={styles.statTrend}><Icons.TrendUp /> +6% dari hari lalu</div>
+                <h3 className={styles.statValue}>{formatNumber(dashboard.stats.today)}</h3>
+                <div className={styles.statTrend}>
+                  {dashboard.stats.trends.today >= 0 ? <Icons.TrendUp /> : <Icons.TrendDown />}
+                  {formatTrendText(dashboard.stats.trends.today, 'hari lalu')}
+                </div>
               </div>
 
               <div className={styles.statCard}>
@@ -289,8 +357,11 @@ const AdminTpsDashboard: React.FC = () => {
                   <span className={styles.statTitle}>Minggu ini</span>
                   <div className={styles.statIconBox}><Icons.CalendarWeek /></div>
                 </div>
-                <h3 className={styles.statValue}>2,450</h3>
-                <div className={styles.statTrend}><Icons.TrendUp /> +8% dari minggu lalu</div>
+                <h3 className={styles.statValue}>{formatNumber(dashboard.stats.this_week)}</h3>
+                <div className={styles.statTrend}>
+                  {dashboard.stats.trends.this_week >= 0 ? <Icons.TrendUp /> : <Icons.TrendDown />}
+                  {formatTrendText(dashboard.stats.trends.this_week, 'minggu lalu')}
+                </div>
               </div>
             </div>
 
@@ -299,22 +370,11 @@ const AdminTpsDashboard: React.FC = () => {
               <h2 className={styles.chartTitle}>Tahap Pengelolaan Sampah</h2>
               <div className={styles.donutContainer}>
                 <div className={styles.donutWrapper}>
-                  <div className={styles.donutStage}></div>
-                  <div className={styles.donutCenter}>Diproses : 28</div>
+                  <div className={styles.donutStage} style={{ background: buildConicGradient(dashboard.stages) }}></div>
+                  <div className={styles.donutCenter}>{getDominantLabel(dashboard.stages, true)}</div>
                 </div>
                 <div className={styles.legendGrid}>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#10B981' }}></div> Didaur Ulang: 42%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#3B82F6' }}></div> Diproses: 28%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#FD9D24' }}></div> Terkumpul: 18%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#8B5CF6' }}></div> Diterima: 12%
-                  </div>
+                  {renderLegend(dashboard.stages, true)}
                 </div>
               </div>
             </div>
@@ -323,22 +383,11 @@ const AdminTpsDashboard: React.FC = () => {
               <h2 className={styles.chartTitle}>Distribusi Kategori Sampah</h2>
               <div className={styles.donutContainer}>
                 <div className={styles.donutWrapper}>
-                  <div className={styles.donutCategory}></div>
-                  <div className={styles.donutCenter}>Plastik PP : 28</div>
+                  <div className={styles.donutCategory} style={{ background: buildConicGradient(dashboard.categories) }}></div>
+                  <div className={styles.donutCenter}>{getDominantLabel(dashboard.categories)}</div>
                 </div>
                 <div className={styles.legendGrid}>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#10B981' }}></div> Plastik PET: 42%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#3B82F6' }}></div> Plastik PP: 28%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#FD9D24' }}></div> Aluminium: 18%
-                  </div>
-                  <div className={styles.legendItem}>
-                    <div className={styles.legendColor} style={{ background: '#8B5CF6' }}></div> Kertas: 12%
-                  </div>
+                  {renderLegend(dashboard.categories)}
                 </div>
               </div>
             </div>
@@ -358,18 +407,24 @@ const AdminTpsDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {MOCK_LEADERBOARD.map((item) => (
-                      <tr key={item.id}>
+                    {dashboard.top_products.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', color: '#737373' }}>
+                          Belum ada data produk dari scan TPS ini.
+                        </td>
+                      </tr>
+                    ) : dashboard.top_products.map((item) => (
+                      <tr key={item.gtin}>
                         <td>
-                          <div className={styles.rankBadge}>{item.id}</div>
+                          <div className={styles.rankBadge}>{item.rank}</div>
                         </td>
                         <td className={styles.productName}>{item.name}</td>
                         <td><span className={styles.productGtin}>{item.gtin}</span></td>
-                        <td className={styles.productTotal} style={{ textAlign: 'right' }}>{item.total}</td>
+                        <td className={styles.productTotal} style={{ textAlign: 'right' }}>{formatNumber(item.total)}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <span className={`${styles.trendBadge} ${item.up ? styles.up : styles.down}`}>
-                            {item.up ? <Icons.TrendUp /> : <Icons.TrendDown />}
-                            {item.trend}%
+                          <span className={`${styles.trendBadge} ${item.trend >= 0 ? styles.up : styles.down}`}>
+                            {item.trend >= 0 ? <Icons.TrendUp /> : <Icons.TrendDown />}
+                            {item.trend > 0 ? '+' : ''}{item.trend}%
                           </span>
                         </td>
                       </tr>

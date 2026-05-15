@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { getGtinAggregateStats, getGtinRecentActivities, GtinAggregateStats } from '../services/konsumen.service';
-import styles from '../styles/DetailSampah.module.css';
+import { getProductDetail } from '../services/product.service';
+
 
 const BIZ_STEP_LABELS: Record<string, string> = {
   commissioning: 'Terdaftar',
@@ -62,12 +63,8 @@ const DetailBarcode: React.FC = () => {
         const activitiesData = await getGtinRecentActivities(gtin, 5);
         setRecentActivities(activitiesData);
 
-        // TODO: Fetch product info dari products table via API
-        setProductInfo({
-          product_name: 'Product Name',
-          category: 'Category',
-          gtin: gtin,
-        });
+        const detail = await getProductDetail(gtin);
+        setProductInfo(detail.product);
       } catch (e: any) {
         setError(e.message || 'Gagal memuat data barcode');
       } finally {
@@ -172,7 +169,8 @@ const DetailBarcode: React.FC = () => {
 
           {stats && Object.keys(stats).length > 0 ? (
             Object.entries(stats).map(([bizStep, data]: [string, any]) => {
-              const percentage = totalScans > 0 ? Math.round((data.count / totalScans) * 100) : 0;
+              const maxCount = Math.max(...Object.values(stats).map((item: any) => item.count), 1);
+              const barWidth = Math.round((data.count / maxCount) * 100);
               return (
                 <div key={bizStep} style={{ marginBottom: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -180,7 +178,7 @@ const DetailBarcode: React.FC = () => {
                       {BIZ_STEP_LABELS[bizStep] || bizStep}
                     </span>
                     <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#333' }}>
-                      {data.count} scan ({percentage}%)
+                      {data.count} scan
                     </span>
                   </div>
                   <div style={{
@@ -193,7 +191,7 @@ const DetailBarcode: React.FC = () => {
                       style={{
                         background: BIZ_STEP_COLORS[bizStep] || '#8BC34A',
                         height: '100%',
-                        width: `${percentage}%`,
+                        width: `${barWidth}%`,
                         transition: 'width 0.3s ease',
                         display: 'flex',
                         alignItems: 'center',
@@ -203,7 +201,7 @@ const DetailBarcode: React.FC = () => {
                         fontWeight: 600,
                       }}
                     >
-                      {percentage > 10 && `${percentage}%`}
+                      {data.count}
                     </div>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>

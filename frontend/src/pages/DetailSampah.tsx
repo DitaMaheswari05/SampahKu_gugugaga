@@ -130,7 +130,8 @@ export default function DetailSampah() {
   }, [id]);
 
   const isBatch = data?.instance?.identification_type === 'BATCH';
-  const activities = data?.activities || [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activities = useMemo(() => data?.activities || [], [data?.activities]);
   const statusCounts = data?.status_counts || null;
   const siblingCount = data?.sibling_count ?? 1;
 
@@ -187,7 +188,6 @@ export default function DetailSampah() {
 
   const { instance } = data;
   const product = instance.products;
-  const discardCount = isBatch ? activities.filter((a: any) => a.biz_step === 'discarding').length : 0;
   const totalBatchItems = siblingCount;
 
   return (
@@ -289,6 +289,7 @@ export default function DetailSampah() {
                 {batchJourney.map((step, idx) => {
                   const locationEntries = Object.entries(step.locations).sort((a, b) => b[1] - a[1]);
                   const showLocations = step.biz_step !== 'discarding' && locationEntries.length > 0;
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
                   const isLast = idx === batchJourney.length - 1;
 
                   return (
