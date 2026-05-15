@@ -1,343 +1,247 @@
-.page {
+.mobileContainer {
   width: 100%;
   max-width: 430px;
   min-height: 100vh;
+  background-color: var(--background);
   margin: 0 auto;
-  background: linear-gradient(180deg, #edf5e3 0%, #eaf2dc 100%);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  position: relative;
   overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  padding-bottom: 30px;
 }
 
 .content {
-  padding: 16px 16px 24px;
+  padding: 0 20px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
-.profileCard,
-.progressCard,
-.activitySection {
-  background: #ffffff;
-  border-radius: 24px;
-  box-shadow: 0 12px 28px rgba(84, 102, 54, 0.12);
-}
-
-.profileCard {
-  padding: 22px 16px 18px;
+/* Banner Section */
+.bannerImage {
+  margin-top: 20px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
 }
 
-.profileMain {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
+/* .bannerImgElement {
+    position: absolute;
+    left: -20px;
+    bottom: -10px;
+    width: 160px;
+    z-index: 1;
+} */
 
-.avatar {
-  width: 76px;
-  height: 76px;
-  border-radius: 14px;
-  background: #bfbfbf;
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.profileText {
-  min-width: 0;
-  flex: 1;
-}
-
-.profileName {
-  margin: 0;
+/* .bannerText {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
   font-size: 24px;
-  line-height: 1.08;
-  font-weight: 700;
-  color: #152238;
+  line-height: 1.2;
+  color: #FFFFFF;
+  text-align: right;
+  z-index: 2;
+  width: 60%;
+} */
+
+/* Stats Section */
+.statsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.profileEmail {
-  margin: 6px 0 10px;
+.sectionTitle {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 26px; /* Scaled down from 55px */
+  color: #000000;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.sectionSubtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: #52606d;
+  font-weight: 400;
+  font-size: 13px; /* Scaled down from 26px */
+  color: #4A5565;
+  margin: 0;
 }
 
-.roleBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #a6d74f;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.scanButton {
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
+/* Horizontal Scroll Container */
+.statsScrollContainer {
+  display: flex;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  border: none;
-  border-radius: 12px;
-  padding: 11px 16px;
-  background: #5da400;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 16px rgba(93, 164, 0, 0.25);
-}
-
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  padding-bottom: 10px;
 }
 
 .statCard {
-  background: rgba(248, 251, 241, 0.95);
-  border: 1px solid #b9dd87;
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 8px 15px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
   padding: 12px;
-  min-height: 110px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-}
-
-.statCard::after {
-  content: '';
-  position: absolute;
-  right: -10px;
-  top: -10px;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: rgba(170, 213, 116, 0.14);
+  gap: 10px;
 }
 
 .statHeader {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  position: relative;
-  z-index: 1;
-}
-
-.statIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  color: #ffffff;
-  flex-shrink: 0;
-}
-
-.iconOrange {
-  background: #ff9f1c;
-}
-
-.iconBlue {
-  background: #2f7df6;
-}
-
-.iconYellow {
-  background: #f4be00;
 }
 
 .statLabel {
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #35511a;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.iconWrapper {
+  width: 32px;
+  height: 32px;
+  background: #91C851;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .statValue {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 32px; /* Scaled down from ~53px */
+  color: #000000;
+  margin: 0 0 4px 0;
+  line-height: 1;
+}
+
+.statDesc {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  font-size: 10px; /* Scaled down from 17.7px */
+  color: #737373;
+  margin: 0;
+}
+
+
+/* Daftar Sampah Section */
+.listSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-top: 10px;
-  font-size: 28px;
-  line-height: 0.95;
-  letter-spacing: -0.8px;
-  font-weight: 800;
-  color: #10172a;
-  position: relative;
-  z-index: 1;
 }
 
-.progressCard {
-  padding: 16px;
-  background: #8dc63f;
-  color: #ffffff;
-}
-
-.progressHeader {
+.listHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
+}
+
+.listTitle {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 20px; /* Scaled down from 35.5px */
+    color: #000000;
+    margin: 0;
+}
+
+.addButton {
+  background: #4C9100;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 16px;
+  font-family: 'Poppins', sans-serif;
   font-weight: 700;
+  font-size: 12px; /* Scaled down from 21.6px */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.progressHeader strong {
-  font-size: 12px;
+.addButton:hover {
+  opacity: 0.9;
 }
 
-.progressTrack {
-  width: 100%;
-  height: 10px;
-  margin: 10px 0 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  overflow: hidden;
-}
-
-.progressFill {
-  width: 45%;
-  height: 100%;
-  border-radius: inherit;
-  background: #5f9d17;
-}
-
-.progressNote {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.errorBanner {
-  background: #fff1f2;
-  color: #9f1239;
-  border: 1px solid #fecdd3;
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-}
-
-.activitySection {
-  padding: 22px 16px 18px;
-}
-
-.sectionTitle {
-  margin: 0 0 18px;
-  font-size: 20px;
-  line-height: 1.1;
-  color: #1c2430;
-  font-weight: 700;
-}
-
-.activityList {
+/* List Items */
+.listContainer {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.activityItem {
-  background: linear-gradient(90deg, rgba(247, 248, 250, 0.96) 0%, rgba(242, 243, 247, 0.92) 100%);
-  border-radius: 16px;
-  padding: 16px 16px 16px 18px;
+.listItem {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0px 5.9px 8.9px -1.5px rgba(0, 0, 0, 0.1), 0px 3px 5.9px -3px rgba(0, 0, 0, 0.1);
+  border-radius: 23.67px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
 
-.activityText {
-  min-width: 0;
-  flex: 1;
-}
-
-.activityTitle {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  line-height: 1.3;
-  font-weight: 700;
-  color: #1d2433;
-}
-
-.activityMeta {
-  margin: 6px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  color: #7b8290;
-}
-
-.metaDot {
-  color: #b4b9c2;
-}
-
-.pointsBadge {
-  flex-shrink: 0;
-  min-width: 52px;
-  padding: 9px 12px;
+.itemIcon {
+  width: 48px;
+  height: 48px;
+  background: #FD9D24;
   border-radius: 12px;
-  background: #ff9f1c;
-  color: #ffffff;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 6px 12px rgba(255, 159, 28, 0.28);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.emptyState {
-  padding: 14px;
-  border-radius: 14px;
-  background: #f8fafc;
-  color: #475569;
+.itemDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemName {
   font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  text-align: center;
+  font-weight: 700;
+  font-size: 15px; /* Scaled down from 26.6px */
+  color: #000000;
+  margin: 0;
 }
 
-.scanButton:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+.itemMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px; /* Scaled down from 17.7px */
 }
 
-@media (max-width: 390px) {
-  .content {
-    padding-inline: 12px;
-  }
+.gtinText {
+  font-family: 'Consolas', monospace;
+  color: #737373;
+  background: #F3F4F6;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 
-  .profileName {
-    font-size: 21px;
-  }
+.dot {
+  color: #BBBBBB;
+}
 
-  .statsGrid {
-    gap: 8px;
-  }
-
-  .statCard {
-    padding: 10px;
-  }
-
-  .statValue {
-    font-size: 26px;
-  }
-
-  .sectionTitle {
-    font-size: 19px;
-  }
-
-  .activityItem {
-    padding: 14px;
-  }
+.dateText {
+  font-family: 'Inter', sans-serif;
+  color: #737373;
 }
