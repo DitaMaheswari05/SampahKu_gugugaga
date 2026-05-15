@@ -16,9 +16,9 @@
 
 ### Proposisi Nilai Utama
 - **Transparansi end-to-end**: Setiap produk dapat dilacak dari konsumen hingga akhir daur ulang
-- **Data terverifikasi**: Integritas data dijamin via blockchain (Hyperledger Fabric, hash-only approach)
+- **Data terverifikasi**: Integritas data dijamin via hash-chain (SHA-256) dengan opsi anchoring ke blockchain (Hyperledger Fabric) untuk audit eksternal
 - **Standar global**: Menggunakan GS1 Digital Link (GTIN), EPCIS 2.0, dan JSON-LD
-- **Insentif berbasis data**: Petugas mendapat reward (poin) untuk setiap pemindaian/update status
+- **TPS-centric**: Sistem tidak bergantung pada partisipasi konsumen — petugas TPS sebagai aktor utama pencatatan data
 
 ---
 
@@ -72,7 +72,7 @@
 | Database | **Supabase** (PostgreSQL) |
 | Auth | **Supabase Auth** (`auth.users`) |
 | Storage | Supabase Storage (untuk `evidence_url` di activities). Frontend via API `/upload`. |
-| Blockchain | Hyperledger Fabric (hash dicatat di `activities.blockchain_hash` — integrasi eksternal) |
+| Data Integrity | Hash-chain SHA-256 (setiap event di-hash dan dicatat di `activities.blockchain_hash`). Hyperledger Fabric diposisikan sebagai **lapisan anchoring opsional** — anchor hash periodik (batch harian) ke blockchain untuk audit eksternal, bukan per-transaksi. |
 
 ### Environment Variables
 
@@ -558,7 +558,7 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 | **Digital Product Passport (DPP)** | Target kompatibilitas untuk `material_passport` |
 | **EPR** (Extended Producer Responsibility) | Justifikasi business case untuk brand/produsen |
 | **ESPR** (Ecodesign for Sustainable Products Regulation) | Regulasi EU yang mendorong adopsi DPP |
-| **Hyperledger Fabric** | Blockchain permissioned untuk catat hash integritas data |
+| **Hash-chain + Hyperledger Fabric** | Integritas data via SHA-256 hash-chain per-event. Hyperledger Fabric sebagai lapisan anchoring opsional (batch periodik) untuk kebutuhan audit eksternal dan compliance — **bukan** per-transaksi |
 
 ---
 
@@ -570,12 +570,12 @@ Dari mockup yang tersedia, berikut adalah catatan desain:
 4. **Poin DIHAPUS** — sistem poin sudah dihapus total. Tidak ada `point_history`, tidak ada `profiles.points`.
 5. **`epcis_body`** adalah JSONB — simpan full EPCIS 2.0 event payload, bukan ringkasan.
 6. **QR code** mewakili `product_instances`, bukan `products`. Satu GTIN bisa punya banyak instances.
-7. **`blockchain_hash`** di `activities` diisi otomatis oleh backend dengan *hash* SHA-256 (`crypto`) dari *payload* aktivitas sebagai simulasi integrasi Hyperledger Fabric untuk keperluan hackathon.
+7. **`blockchain_hash`** di `activities` diisi otomatis oleh backend dengan *hash* SHA-256 (`crypto`) dari *payload* aktivitas. Ini adalah implementasi **hash-chain** — setiap hash menjadi bukti integritas (tamper-evidence). Hyperledger Fabric diposisikan sebagai lapisan anchoring opsional untuk audit eksternal, **bukan** blockchain per-transaksi.
 8. **`evidence_url`** adalah URL file di Supabase Storage — di-*upload* langsung dari frontend ke bucket `evidences`.
 9. Frontend menggunakan **React 19** dan **TypeScript 4.9** — perhatikan compatibility.
 10. Backend menggunakan **Express 5** — syntax beberapa hal berbeda dari Express 4 (misal: async error handling otomatis, tidak perlu `next(err)` manual di async routes). **Perhatikan**: `req.params` di Express 5 bertipe `string | string[]`, perlu cast ke `string` saat pass ke function.
 11. **Lifecycle** tidak harus linear — sistem harus memfasilitasi "Jalur A" (via TPS) dan "Jalur B" (langsung Bank Sampah). Petugas hanya bisa update status sesuai dengan otoritas role-nya.
-12. **Sistem poin TBD** — jangan hardcode angka poin di kode sebelum tim menentukannya. Gunakan konstanta/config yang mudah diubah. Backend menyediakan `POINTS` config sebagai placeholder.
+12. **Sistem poin DIHAPUS** — tidak ada reward/poin untuk konsumen maupun petugas. Scan petugas adalah bagian dari SOP kerja, bukan aktivitas sukarela berbasis insentif.
 13. Alur nyata Indonesia: **Gerobak RT → TPS → Truk DLH → Bank Sampah/TPA** — setiap perpindahan adalah 1 scan point petugas.
 14. **`biz_step: 'discarding'`** digunakan oleh KONSUMEN, sedangkan `biz_step: 'disposing'` digunakan oleh PETUGAS (untuk landfill akhir). Jangan sampai tertukar.
 15. **Explicit profiles insert** — backend menggunakan `admin.createUser()` (bypass DB trigger) lalu `profiles.upsert()` secara eksplisit. **JANGAN** buat DB trigger `on_auth_user_created` — sudah dihapus karena menyebabkan error. **JANGAN** pernah INSERT langsung ke `auth.users` via raw SQL — Supabase GoTrue membutuhkan `instance_id` dan metadata internal yang hanya di-set benar oleh Admin API. Seeding user harus selalu via `admin.createUser()` (lihat `backend/fix_users.ts`).
