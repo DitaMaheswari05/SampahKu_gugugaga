@@ -461,7 +461,6 @@ Ketika QR di-scan, sistem resolve URL → lookup `product_instances` berdasarkan
 ---
 
 ## 8. Konvensi Kode
-
 ### Backend (TypeScript / Express)
 - **Pattern**: `routes/` → `controllers/` → `services/` → `supabase client`
 - Controllers **hanya** menangani `req`/`res`, tidak ada business logic
