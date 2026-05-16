@@ -185,12 +185,7 @@ export class KonsumenService {
 
       return {
         instance: baseResult,
-        activities: (activities || []).map((activity: any) => ({
-          id: activity.id,
-          title: activity.product_instances?.products?.name || 'Produk Tidak Diketahui', // Menampilkan Nama Produk
-          date: new Date(activity.timestamp).toISOString().slice(0, 10),
-          location: activity.product_instances?.gtin || '-', // Mengirim GTIN sebagai lokasi/identifier
-        })),
+        activities: activities ?? [],
         status_counts: null,
         sibling_count: 1,
       };
